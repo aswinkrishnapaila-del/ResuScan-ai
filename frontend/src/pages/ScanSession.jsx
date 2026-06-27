@@ -9,7 +9,7 @@ import {
 import CandidateCard from '../components/CandidateCard';
 import DetailedReport from './DetailedReport';
 
-const API_BASE = 'http://localhost:8000/api';
+import { API_BASE } from '../config';
 
 export default function ScanSession({ clearTrigger, setActiveTab }) {
   const [jobDescription, setJobDescription] = useState('');

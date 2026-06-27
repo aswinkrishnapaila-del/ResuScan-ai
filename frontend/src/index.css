@@ -280,8 +280,17 @@ p {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
 }
 
 /* Inputs */
@@ -624,7 +633,8 @@ textarea.form-input {
   border-radius: 14px;
   overflow: hidden;
   max-height: calc(100vh - 220px);
-  background: var(--bg-color);
+  min-height: 400px;
+  background: var(--card-bg);
   position: sticky;
   top: 0;
 }
@@ -891,4 +901,31 @@ textarea.form-input {
 :root.dark .badge-warning {
   background: rgba(245,158,11,0.12);
   color: #f59e0b;
+}
+
+/* ─── Content Area (main page frame) ─── */
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Ensure motion.div inside content-area fills height for builder */
+.content-area > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ─── Builder preview panel height fix ─── */
+.builder-preview-panel {
+  max-height: calc(100vh - 200px) !important;
+  height: calc(100vh - 200px);
+}
+
+.builder-form-panel {
+  max-height: calc(100vh - 200px) !important;
 }

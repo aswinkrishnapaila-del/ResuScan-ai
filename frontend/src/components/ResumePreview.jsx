@@ -71,7 +71,7 @@ function Minimalist({ d, accent }) {
         <h1 style={{ fontSize: '2.2rem', color: accent, fontWeight: 700, letterSpacing: -0.5 }}>{d.name}</h1>
         <p style={{ fontSize: '1rem', color: '#475569', margin: '4px 0 10px', fontWeight: 500 }}>{d.title}</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#64748b' }}>
-          {[d.location && `📍 ${d.location}`, d.email && `✉ ${d.email}`, d.phone && `📞 ${d.phone}`, d.linkedin && `🔗 ${d.linkedin}`, d.github && `💻 ${d.github}`, ...d.profiles.map(p => `${p.platform}: ${p.url}`)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
+          {[d.location && `📍 ${d.location}`, d.email && `✉ ${d.email}`, d.phone && `📞 ${d.phone}`, d.linkedin && `🔗 ${d.linkedin}`, d.github && `💻 ${d.github}`, d.website && `🌐 ${d.website}`, ...d.profiles.map(p => `${p.platform}: ${p.url}`)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
         </div>
       </div>
       {d.summary && <><SectionTitle accent={accent} label="SUMMARY" /><HtmlSummary html={d.summary} style={{ fontSize: '0.85rem', lineHeight: 1.6, color: '#334155', marginBottom: '1.2rem' }} /></>}
@@ -118,7 +118,7 @@ function Executive({ d, accent }) {
         <h1 style={{ fontSize: '2rem', color: accent, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}>{d.name}</h1>
         <p style={{ fontSize: '0.95rem', color: '#64748b', margin: '4px 0' }}>{d.title}</p>
         <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '1.2rem', fontSize: '0.78rem', color: '#64748b', marginTop: 8 }}>
-          {[d.email, d.phone, d.location, d.linkedin, d.github, ...d.profiles.map(p=>`${p.platform}: ${p.url}`)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
+          {[d.email, d.phone, d.location, d.linkedin, d.github, d.website, ...d.profiles.map(p=>`${p.platform}: ${p.url}`)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
         </div>
       </div>
       {d.summary && <><SectionTitle accent={accent} label="PROFESSIONAL SUMMARY" center /><HtmlSummary html={d.summary} style={{ fontSize: '0.85rem', lineHeight: 1.7, color: '#374151', marginBottom: '1.5rem' }} /></>}
@@ -169,7 +169,7 @@ function Modern({ d, accent }) {
           <h1 style={{ fontSize: '2rem', color: '#fff', fontWeight: 700 }}>{d.name}</h1>
           <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '1rem', margin: '4px 0 10px' }}>{d.title}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.78rem', color: 'rgba(255,255,255,0.8)' }}>
-            {[d.email, d.phone, d.location, d.linkedin, d.github, ...d.profiles.map(p=>`${p.platform}: ${p.url}`)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
+            {[d.email, d.phone, d.location, d.linkedin, d.github, d.website, ...d.profiles.map(p=>`${p.platform}: ${p.url}`)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
           </div>
         </div>
       </div>
@@ -226,7 +226,7 @@ function Creative({ d, accent }) {
         <p style={{ fontSize: '0.8rem', textAlign: 'center', opacity: 0.85, marginBottom: '1.5rem' }}>{d.title}</p>
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '1rem' }}>
           <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.7, marginBottom: 6 }}>CONTACT</p>
-          {[d.email, d.phone, d.location, d.linkedin, d.github, ...d.profiles.map(p=>`${p.platform}: ${p.url}`)].filter(Boolean).map((v, i) => <p key={i} style={{ fontSize: '0.75rem', opacity: 0.85, marginBottom: 4, wordBreak: 'break-all' }}>{v}</p>)}
+          {[d.email, d.phone, d.location, d.linkedin, d.github, d.website, ...d.profiles.map(p=>`${p.platform}: ${p.url}`)].filter(Boolean).map((v, i) => <p key={i} style={{ fontSize: '0.75rem', opacity: 0.85, marginBottom: 4, wordBreak: 'break-all' }}>{v}</p>)}
         </div>
         <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '1rem' }}>
           <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.7, marginBottom: 8 }}>SKILLS</p>
@@ -274,7 +274,7 @@ function Tech({ d, accent }) {
           <h1 style={{ fontSize: '2.2rem', color: '#fff', fontWeight: 700, fontFamily: 'monospace' }}>{d.name}</h1>
           <p style={{ color: '#10b981', fontSize: '1.1rem', margin: '4px 0 10px', fontFamily: 'monospace' }}>$ {d.title}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontFamily: 'monospace' }}>
-            {[d.email, d.phone, d.location, d.github, ...d.profiles.map(p=>`${p.platform}: ${p.url}`)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
+            {[d.email, d.phone, d.location, d.github, d.website, d.linkedin, ...d.profiles.map(p=>`${p.platform}: ${p.url}`)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
           </div>
         </div>
       </div>
@@ -317,7 +317,7 @@ function Sidebar({ d, accent }) {
         )}
         <h1 style={{ fontSize: '1.2rem', fontWeight: 700, textAlign: 'center', marginBottom: 2 }}>{d.name}</h1>
         <p style={{ fontSize: '0.8rem', textAlign: 'center', opacity: 0.8, marginBottom: '1.5rem' }}>{d.title}</p>
-        {[['📧', d.email], ['📞', d.phone], ['📍', d.location], ['🔗', d.linkedin], ['💻', d.github], ...d.profiles.map(p=>['👤', p.url])].filter(([, v]) => v).map(([icon, v], i) => (
+        {[['📧', d.email], ['📞', d.phone], ['📍', d.location], ['🔗', d.linkedin], ['💻', d.github], ['🌐', d.website], ...d.profiles.map(p=>['👤', p.url])].filter(([, v]) => v).map(([icon, v], i) => (
           <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, fontSize: '0.75rem', opacity: 0.85, wordBreak: 'break-all' }}><span>{icon}</span><span>{v}</span></div>
         ))}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '1rem', marginTop: '1.5rem' }}>
@@ -361,7 +361,7 @@ function Bold({ d, accent }) {
         <h1 style={{ fontSize: '2.8rem', fontWeight: 900, color: accent, lineHeight: 1, letterSpacing: -1 }}>{d.name.toUpperCase()}</h1>
         <p style={{ fontSize: '1.1rem', color: '#475569', fontWeight: 500, marginTop: 6 }}>{d.title}</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#64748b', marginTop: 8 }}>
-          {[d.email, d.phone, d.location, d.linkedin, d.github, ...d.profiles.map(p=>p.url)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
+          {[d.email, d.phone, d.location, d.linkedin, d.github, d.website, ...d.profiles.map(p=>p.url)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
         </div>
       </div>
       {d.summary && <div style={{ borderLeft: `2px solid #e2e8f0`, paddingLeft: '1.5rem', marginBottom: '1.5rem' }}><HtmlSummary html={d.summary} style={{ fontSize: '0.87rem', lineHeight: 1.6, color: '#334155' }} /></div>}
@@ -396,7 +396,7 @@ function Elegant({ d, accent }) {
         <p style={{ fontSize: '0.95rem', color: '#78716c', fontStyle: 'italic', margin: '4px 0 10px' }}>{d.title}</p>
         <div style={{ width: 60, height: 2, background: accent, margin: '0 auto 10px' }} />
         <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '1rem', fontSize: '0.78rem', color: '#78716c' }}>
-          {[d.email, d.phone, d.location, d.linkedin, d.github, ...d.profiles.map(p=>p.url)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
+          {[d.email, d.phone, d.location, d.linkedin, d.github, d.website, ...d.profiles.map(p=>p.url)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
         </div>
       </div>
       {d.summary && <div style={{ padding: '0 2rem', marginBottom: '1.5rem', textAlign: 'center', fontStyle: 'italic', color: '#57534e' }}><HtmlSummary html={d.summary} style={{ fontSize: '0.87rem', lineHeight: 1.7 }} /></div>}
@@ -436,7 +436,7 @@ function Compact({ d, accent }) {
           </div>
         </div>
         <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#64748b', lineHeight: 1.6 }}>
-          {[d.email, d.phone, d.location, d.github].filter(Boolean).map((v, i) => <p key={i}>{v}</p>)}
+          {[d.email, d.phone, d.location, d.github, d.website].filter(Boolean).map((v, i) => <p key={i}>{v}</p>)}
         </div>
       </div>
       {d.summary && <div style={{ marginBottom: '1rem' }}><HtmlSummary html={d.summary} style={{ fontSize: '0.82rem', lineHeight: 1.5, color: '#334155' }} /></div>}
@@ -471,7 +471,7 @@ function Academic({ d, accent }) {
         <h1 style={{ fontSize: '2rem', fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: 1 }}>{d.name}</h1>
         <p style={{ fontSize: '0.85rem', color: '#475569', margin: '4px 0 8px' }}>{d.title}</p>
         <div style={{ borderTop: `1px solid ${accent}`, borderBottom: `1px solid ${accent}`, padding: '4px 0', display: 'flex', justifyContent: 'center', gap: '1.5rem', fontSize: '0.78rem', color: '#64748b', margin: '0 2rem' }}>
-          {[d.email, d.phone, d.location, d.website, d.github, ...d.profiles.map(p=>p.url)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
+          {[d.email, d.phone, d.location, d.linkedin, d.website, d.github, ...d.profiles.map(p=>p.url)].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
         </div>
       </div>
       {d.summary && <><SectionTitle accent={accent} label="RESEARCH INTERESTS" /><HtmlSummary html={d.summary} style={{ fontSize: '0.85rem', lineHeight: 1.7, color: '#334155', marginBottom: '1.2rem' }} /></>}

@@ -1,10 +1,11 @@
 fastapi
 uvicorn
-spacy
-scikit-learn
-python-multipart
+google-genai
 PyPDF2
 python-docx
+pydantic
+python-multipart
+python-dotenv
 jinja2
 xhtml2pdf
-google-genai
+supabase==2.15.0

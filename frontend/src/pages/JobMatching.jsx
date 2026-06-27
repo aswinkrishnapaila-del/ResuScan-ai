@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Briefcase, MapPin, DollarSign, ExternalLink, Loader2, RefreshCw, Sparkles, AlertCircle } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8000/api';
+import { API_BASE } from '../config';
 
 export default function JobMatching() {
   const [jobs, setJobs] = useState([]);

@@ -5,7 +5,6 @@ import {
   User, 
   Settings, 
   HelpCircle,
-  Bell,
   Archive,
   Sun,
   Moon,
@@ -26,15 +25,6 @@ function AppContent() {
   const [clearTrigger, setClearTrigger] = useState(0);
   const [loadedDraft, setLoadedDraft] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, type: 'system', text: 'Gemini 1.5 Flash integrated for faster scans.', bold: 'System Update:' },
-    { id: 2, type: 'tip', text: 'Try the new "Refine with AI" feature in Builder!', bold: 'Tip:' }
-  ]);
-
-  const handleClearNotifications = () => {
-    setNotifications([]);
-  };
   const [showInfo, setShowInfo] = useState(false);
   const { profile, loading } = useUser();
 
@@ -127,42 +117,6 @@ function AppContent() {
             <button className="btn btn-outline" onClick={toggleDarkMode} title="Toggle Theme">
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-
-            {/* Notifications */}
-            <div style={{ position: 'relative' }}>
-              <button className="btn btn-outline" onClick={() => setShowNotifications(!showNotifications)} title="Notifications">
-                <Bell size={20} />
-                {notifications.length > 0 && (
-                  <span style={{ position: 'absolute', top: -4, right: -4, background: 'var(--danger)', color: 'white', fontSize: '10px', padding: '2px 5px', borderRadius: '10px', border: '2px solid var(--card-bg)' }}>
-                    {notifications.length}
-                  </span>
-                )}
-              </button>
-              {showNotifications && (
-                <div className="card animate-fade-in" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '10px', width: '300px', zIndex: 100, boxShadow: 'var(--shadow-lg)' }}>
-                  <div className="flex-between" style={{ marginBottom: '10px' }}>
-                    <h4 style={{ margin: 0 }}>Notifications</h4>
-                    {notifications.length > 0 && (
-                      <button 
-                        style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer' }}
-                        onClick={handleClearNotifications}
-                      >
-                        Clear All
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {notifications.length > 0 ? notifications.map(n => (
-                      <div key={n.id} style={{ fontSize: '0.85rem', padding: '8px', borderRadius: '6px', background: 'var(--secondary)' }}>
-                        <b>{n.bold}</b> {n.text}
-                      </div>
-                    )) : (
-                      <p style={{ fontSize: '0.85rem', textAlign: 'center', padding: '10px' }}>No new notifications</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
 
             {/* Info */}
             <button className="btn btn-outline" onClick={() => setShowInfo(true)} title="About App">

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import scanner, generator
 import uvicorn
+import database  # Initialize Supabase resilience checks
 
 app = FastAPI(title="AI Resume Platform API")
 
@@ -24,4 +25,6 @@ def health_check():
     return {"status": "healthy", "message": "AI Resume Platform Backend is running!"}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

@@ -1,0 +1,23 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/services/python.exe
+
+# Secrets — set these as Railway environment variables instead
+backend/.env
+
+# Dev-only scripts (not needed in production)
+backend/create_sample.py
+backend/test_pdf.py
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# System
+.DS_Store
+Thumbs.db
+*.log

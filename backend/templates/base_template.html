@@ -2,95 +2,180 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Resume</title>
+    <title>Resume - {{ name }}</title>
     <style>
+        @page {
+            margin: 1.5cm 1.8cm;
+        }
+        * {
+            box-sizing: border-box;
+        }
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            color: #333;
+            font-family: Helvetica, Arial, sans-serif;
+            color: #1e293b;
             line-height: 1.5;
             margin: 0;
-            padding: 40px;
+            padding: 0;
+            font-size: 13px;
         }
+
+        /* ── Header ── */
         .header {
+            border-bottom: 2.5pt solid #3b28cc;
+            padding-bottom: 12pt;
+            margin-bottom: 14pt;
             text-align: center;
-            border-bottom: 2px solid #3b28cc;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
         }
-        h1 {
-            font-size: 32px;
-            margin: 0 0 10px 0;
-            color: #1e1b4b;
+        .header h1 {
+            font-size: 26pt;
+            margin: 0 0 4pt 0;
+            color: #1e293b;
+            font-weight: 900;
+            letter-spacing: -0.5pt;
         }
-        .contact-info {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 10px;
-        }
-        .summary {
-            font-size: 15px;
-            margin-bottom: 20px;
-        }
-        h2 {
-            font-size: 20px;
+        .header .sub-title {
+            font-size: 12pt;
             color: #3b28cc;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 5px;
-            margin-top: 25px;
-            margin-bottom: 15px;
-            text-transform: uppercase;
+            font-weight: 700;
+            margin: 0 0 8pt 0;
         }
-        .item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 5px;
+        .contact-row {
+            font-size: 9.5pt;
+            color: #64748b;
+            margin-bottom: 3pt;
+        }
+
+        /* ── Summary ── */
+        .summary-box {
+            font-size: 10pt;
+            color: #334155;
+            margin-bottom: 12pt;
+            line-height: 1.6;
+            padding: 0 4pt;
+        }
+
+        /* ── Section Headings ── */
+        h2 {
+            font-size: 9pt;
+            color: #3b28cc;
+            border-bottom: 1.5pt solid #3b28cc;
+            padding-bottom: 3pt;
+            margin-top: 14pt;
+            margin-bottom: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 1pt;
+            font-weight: 800;
+        }
+
+        /* ── Experience / Project items ── */
+        .item-wrap {
+            margin-bottom: 10pt;
+        }
+        .item-row {
+            width: 100%;
+        }
+        .item-row td {
+            vertical-align: top;
+            padding: 0;
         }
         .item-title {
-            font-weight: bold;
-            font-size: 16px;
+            font-weight: 700;
+            font-size: 11pt;
+            color: #111827;
         }
-        .item-subtitle {
-            font-size: 14px;
-            font-weight: bold;
-            color: #555;
+        .item-company {
+            font-size: 10pt;
+            font-weight: 600;
+            color: #3b28cc;
         }
         .item-date {
-            font-size: 14px;
-            color: #888;
-            float: right;
+            font-size: 9pt;
+            color: #64748b;
+            text-align: right;
+            white-space: nowrap;
         }
         ul {
-            margin-top: 5px;
-            padding-left: 20px;
-            margin-bottom: 15px;
+            margin: 4pt 0 0 0;
+            padding-left: 16pt;
         }
         li {
-            font-size: 14px;
-            margin-bottom: 5px;
+            font-size: 10pt;
+            margin-bottom: 3pt;
+            color: #334155;
+            line-height: 1.5;
         }
-        .skills-category {
-            margin-bottom: 15px;
+
+        /* ── Education ── */
+        .edu-wrap {
+            margin-bottom: 8pt;
         }
-        .skills-category strong {
+        .edu-degree {
+            font-weight: 700;
+            font-size: 11pt;
+        }
+        .edu-school {
+            font-size: 10pt;
+            color: #3b28cc;
+            font-weight: 600;
+        }
+        .edu-meta {
+            font-size: 9pt;
+            color: #64748b;
+        }
+
+        /* ── Skills ── */
+        .skills-section {
+            margin-bottom: 6pt;
+        }
+        .skills-category-label {
+            font-size: 9pt;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            margin-bottom: 4pt;
             display: block;
-            margin-bottom: 5px;
         }
         .skill-tag {
             display: inline-block;
             background-color: #f1f5f9;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 13px;
+            border: 1pt solid #e2e8f0;
+            padding: 2pt 8pt;
+            border-radius: 3pt;
+            font-size: 9pt;
             color: #334155;
-            margin-right: 8px;
-            margin-bottom: 8px;
+            margin-right: 5pt;
+            margin-bottom: 5pt;
         }
-        /* Clearing floats for Weasyprint compatibility */
-        .clearfix::after {
+
+        /* ── Awards / Certs / Publications ── */
+        .list-item {
+            font-size: 10pt;
+            margin-bottom: 4pt;
+            color: #334155;
+        }
+        .list-item b {
+            color: #111827;
+        }
+        .list-year {
+            color: #64748b;
+            font-size: 9pt;
+        }
+
+        /* ── Two-column for certs + awards ── */
+        .two-col-table {
+            width: 100%;
+        }
+        .two-col-table td {
+            width: 50%;
+            vertical-align: top;
+            padding-right: 10pt;
+        }
+
+        /* Float clearfix */
+        .clearfix:after {
             content: "";
-            clear: both;
             display: table;
+            clear: both;
         }
     </style>
 </head>
@@ -98,158 +183,170 @@
 
 <div class="header">
     <h1>{{ name }}</h1>
-    <p style="font-size: 18px; font-weight: bold; margin-top: -5px; color: #3b28cc;">{{ title }}</p>
-    <div class="contact-info">
-        {{ email }} 
-        {% if phone %} | {{ phone }}{% endif %}
-        {% if location %} | {{ location }}{% endif %}
+    {% if title %}
+    <p class="sub-title">{{ title }}</p>
+    {% endif %}
+    <div class="contact-row">
+        {{ email }}{% if phone %} &nbsp;|&nbsp; {{ phone }}{% endif %}{% if location %} &nbsp;|&nbsp; {{ location }}{% endif %}
     </div>
-    <div class="contact-info">
-        {% if linkedin %}{{ linkedin }} {% endif %}
-        {% if github %}| {{ github }} {% endif %}
-        {% if website %}| {{ website }}{% endif %}
-    </div>
-    {% if profiles %}
-    <div class="contact-info">
-        {% for profile in profiles %}
-            {% if profile.url %}{{ profile.platform }}: {{ profile.url }}{% if not loop.last %} | {% endif %}{% endif %}
-        {% endfor %}
+    {% if linkedin or github or website %}
+    <div class="contact-row">
+        {% if linkedin %}{{ linkedin }}{% endif %}{% if github %} &nbsp;|&nbsp; {{ github }}{% endif %}{% if website %} &nbsp;|&nbsp; {{ website }}{% endif %}
     </div>
     {% endif %}
-    <div class="summary">
-        {{ summary | safe }}
+    {% if profiles %}
+    <div class="contact-row">
+        {% for profile in profiles %}{% if profile.url %}{{ profile.platform }}: {{ profile.url }}{% if not loop.last %} &nbsp;|&nbsp; {% endif %}{% endif %}{% endfor %}
     </div>
+    {% endif %}
 </div>
 
+{% if summary %}
+<div class="summary-box">{{ summary | safe }}</div>
+{% endif %}
+
+{% if experience %}
 <h2>Experience</h2>
 {% for exp in experience %}
-    <div class="item-header clearfix">
-        <div style="float: left; width: 70%;">
-            <span class="item-title">{{ exp.role }}</span>, <span class="item-subtitle">{{ exp.company }}</span>
-        </div>
-        <div class="item-date">{{ exp.dates }}</div>
-    </div>
+{% if exp.role or exp.company %}
+<div class="item-wrap">
+    <table class="item-row" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width:75%">
+                <span class="item-title">{{ exp.role }}</span>
+                {% if exp.company %}&nbsp;&mdash;&nbsp;<span class="item-company">{{ exp.company }}</span>{% endif %}
+            </td>
+            <td class="item-date">{{ exp.dates }}</td>
+        </tr>
+    </table>
+    {% if exp.bullets %}
     <ul>
-        {% for bullet in exp.bullets %}
-            <li>{{ bullet }}</li>
-        {% endfor %}
+        {% for bullet in exp.bullets %}{% if bullet %}<li>{{ bullet }}</li>{% endif %}{% endfor %}
     </ul>
+    {% endif %}
+</div>
+{% endif %}
 {% endfor %}
+{% endif %}
 
 {% if projects %}
 <h2>Projects</h2>
 {% for proj in projects %}
-    <div class="item-header clearfix">
-        <div style="float: left; width: 70%;">
-            <span class="item-title">{{ proj.name }}</span>
-            {% if proj.tech_stack %} | <span style="font-size: 13px; color: #666;">{{ proj.tech_stack }}</span>{% endif %}
-        </div>
-        {% if proj.link %}
-        <div class="item-date"><a href="{{ proj.link }}" style="color: #3b28cc; text-decoration: none;">Link</a></div>
-        {% endif %}
-    </div>
+{% if proj.name %}
+<div class="item-wrap">
+    <table class="item-row" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width:75%">
+                <span class="item-title">{{ proj.name }}</span>
+                {% if proj.tech_stack %}&nbsp;|&nbsp;<span style="font-size:9pt;color:#64748b;">{{ proj.tech_stack }}</span>{% endif %}
+            </td>
+            <td class="item-date">{% if proj.link %}{{ proj.link }}{% endif %}</td>
+        </tr>
+    </table>
+    {% if proj.bullets %}
     <ul>
-        {% for bullet in proj.bullets %}
-            <li>{{ bullet }}</li>
-        {% endfor %}
+        {% for bullet in proj.bullets %}{% if bullet %}<li>{{ bullet }}</li>{% endif %}{% endfor %}
     </ul>
+    {% endif %}
+</div>
+{% endif %}
 {% endfor %}
 {% endif %}
 
+{% if education %}
 <h2>Education</h2>
 {% for edu in education %}
-    <div class="item-header clearfix">
-        <div style="float: left; width: 70%;">
-            <span class="item-title">{{ edu.degree }}</span>, <span class="item-subtitle">{{ edu.school }}</span>
-            {% if edu.city %}, <span style="font-size: 13px; color: #666;">{{ edu.city }}</span>{% endif %}
-        </div>
-        <div class="item-date">
-            {% if edu.startMonth %}{{ edu.startMonth }} {{ edu.startYear }} - {% endif %}
-            {{ edu.endMonth }} {{ edu.endYear }}
-        </div>
-    </div>
+{% if edu.degree or edu.school %}
+<div class="edu-wrap">
+    <table class="item-row" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width:75%">
+                <span class="edu-degree">{{ edu.degree }}</span>
+                {% if edu.school %}&nbsp;&mdash;&nbsp;<span class="edu-school">{{ edu.school }}</span>{% endif %}
+                {% if edu.city %}, <span class="edu-meta">{{ edu.city }}</span>{% endif %}
+            </td>
+            <td class="item-date">
+                {% if edu.startMonth %}{{ edu.startMonth }} {{ edu.startYear }} &ndash; {% endif %}{{ edu.endMonth }} {{ edu.endYear }}
+            </td>
+        </tr>
+    </table>
     {% if edu.cgpa %}
-    <div style="font-size: 13px; color: #555; margin-bottom: 10px;">CGPA / Score: {{ edu.cgpa }}</div>
-    {% endif %}
-{% endfor %}
-
-{% if skills %}
-<h2>Skills</h2>
-<div style="display: flex; flex-wrap: wrap; gap: 20px;">
-    {% if skills.languages %}
-    <div class="skills-category" style="flex: 1; min-width: 200px;">
-        <strong>Languages</strong>
-        <div>
-            {% for skill in skills.languages %}
-                <span class="skill-tag">{{ skill }}</span>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-    {% if skills.frontend %}
-    <div class="skills-category" style="flex: 1; min-width: 200px;">
-        <strong>Frontend</strong>
-        <div>
-            {% for skill in skills.frontend %}
-                <span class="skill-tag">{{ skill }}</span>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-    {% if skills.backend %}
-    <div class="skills-category" style="flex: 1; min-width: 200px;">
-        <strong>Backend & Cloud</strong>
-        <div>
-            {% for skill in skills.backend %}
-                <span class="skill-tag">{{ skill }}</span>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-    {% if skills.ai_tools %}
-    <div class="skills-category" style="flex: 1; min-width: 200px;">
-        <strong>AI & Tools</strong>
-        <div>
-            {% for skill in skills.ai_tools %}
-                <span class="skill-tag">{{ skill }}</span>
-            {% endfor %}
-        </div>
-    </div>
+    <div class="edu-meta">CGPA / Score: {{ edu.cgpa }}</div>
     {% endif %}
 </div>
 {% endif %}
+{% endfor %}
+{% endif %}
 
-<div style="display: flex; gap: 40px;">
-    {% if certifications %}
-    <div style="flex: 1;">
-        <h2>Certifications</h2>
-        <ul>
-            {% for cert in certifications %}
-                <li><b>{{ cert.name }}</b> {% if cert.year %}({{ cert.year }}){% endif %}</li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-
-    {% if awards %}
-    <div style="flex: 1;">
-        <h2>Awards</h2>
-        <ul>
-            {% for award in awards %}
-                <li><b>{{ award.name }}</b> {% if award.year %}({{ award.year }}){% endif %}</li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
+{% if skills %}
+{% set has_skills = skills.languages or skills.frontend or skills.backend or skills.ai_tools %}
+{% if has_skills %}
+<h2>Skills</h2>
+{% if skills.languages %}
+<div class="skills-section">
+    <span class="skills-category-label">Languages</span>
+    {% for skill in skills.languages %}<span class="skill-tag">{{ skill }}</span>{% endfor %}
 </div>
+{% endif %}
+{% if skills.frontend %}
+<div class="skills-section">
+    <span class="skills-category-label">Frontend</span>
+    {% for skill in skills.frontend %}<span class="skill-tag">{{ skill }}</span>{% endfor %}
+</div>
+{% endif %}
+{% if skills.backend %}
+<div class="skills-section">
+    <span class="skills-category-label">Backend &amp; Cloud</span>
+    {% for skill in skills.backend %}<span class="skill-tag">{{ skill }}</span>{% endfor %}
+</div>
+{% endif %}
+{% if skills.ai_tools %}
+<div class="skills-section">
+    <span class="skills-category-label">AI &amp; Tools</span>
+    {% for skill in skills.ai_tools %}<span class="skill-tag">{{ skill }}</span>{% endfor %}
+</div>
+{% endif %}
+{% endif %}
+{% endif %}
+
+{% if certifications or awards %}
+<table class="two-col-table" cellpadding="0" cellspacing="0">
+    <tr>
+        {% if certifications %}
+        <td>
+            <h2>Certifications</h2>
+            {% for cert in certifications %}
+            {% if cert.name %}
+            <div class="list-item"><b>{{ cert.name }}</b> {% if cert.year %}<span class="list-year">({{ cert.year }})</span>{% endif %}</div>
+            {% endif %}
+            {% endfor %}
+        </td>
+        {% endif %}
+        {% if awards %}
+        <td>
+            <h2>Awards &amp; Achievements</h2>
+            {% for award in awards %}
+            {% if award.name %}
+            <div class="list-item"><b>{{ award.name }}</b> {% if award.year %}<span class="list-year">({{ award.year }})</span>{% endif %}</div>
+            {% endif %}
+            {% endfor %}
+        </td>
+        {% endif %}
+    </tr>
+</table>
+{% endif %}
 
 {% if publications %}
 <h2>Publications</h2>
-<ul>
-    {% for pub in publications %}
-        <li><b>{{ pub.title }}</b> {% if pub.year %}({{ pub.year }}){% endif %} {% if pub.link %}- <a href="{{ pub.link }}" style="color: #3b28cc;">Link</a>{% endif %}</li>
-    {% endfor %}
-</ul>
+{% for pub in publications %}
+{% if pub.title %}
+<div class="list-item">
+    <b>{{ pub.title }}</b>
+    {% if pub.year %}<span class="list-year">({{ pub.year }})</span>{% endif %}
+    {% if pub.link %}&nbsp;&mdash;&nbsp;{{ pub.link }}{% endif %}
+</div>
+{% endif %}
+{% endfor %}
 {% endif %}
 
 </body>
