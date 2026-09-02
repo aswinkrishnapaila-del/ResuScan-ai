@@ -591,6 +591,174 @@ function Professional({ d, accent }) {
   );
 }
 
+
+function Startup({ d, accent }) {
+  return (
+    <div style={{ fontFamily: 'Inter, sans-serif', color: '#e2e8f0', background: '#0f172a', padding: '2.5rem', minHeight: 900 }}>
+      <div style={{ borderBottom: `2px solid ${accent}`, paddingBottom: '1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <h1 style={{ fontSize: '2.5rem', color: '#fff', fontWeight: 800, letterSpacing: -0.5 }}>{d.name}</h1>
+          <p style={{ fontSize: '1.1rem', color: accent, marginTop: 4, fontWeight: 600 }}>{d.title}</p>
+        </div>
+        <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.6 }}>
+          {[d.email, d.phone, d.location, d.github, d.website, d.linkedin].filter(Boolean).map((v, i) => <div key={i}>{v}</div>)}
+        </div>
+      </div>
+      {d.summary && <><SectionTitle accent={accent} label="OVERVIEW" /><HtmlSummary html={d.summary} style={{ fontSize: '0.85rem', lineHeight: 1.6, color: '#cbd5e1', marginBottom: '1.5rem' }} /></>}
+      
+      <SectionTitle accent={accent} label="EXPERIENCE" />
+      {d.experience.map((e, i) => (
+        <div key={i} style={{ marginBottom: '1.2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <strong style={{ fontSize: '0.95rem', color: '#fff' }}>{e.role} <span style={{ color: accent }}>@ {e.company}</span></strong>
+            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{e.dates}</span>
+          </div>
+          <ul style={{ paddingLeft: '1.2rem', margin: '6px 0 0' }}>
+            {e.bullets.map((b, bi) => <li key={bi} style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: 4 }}>{b}</li>)}
+          </ul>
+        </div>
+      ))}
+      
+      {d.projects.length > 0 && d.projects[0].name && (
+        <><SectionTitle accent={accent} label="PROJECTS" />
+        {d.projects.map((p, i) => (
+          <div key={i} style={{ marginBottom: '1.2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <strong style={{ fontSize: '0.95rem', color: '#fff' }}>{p.name}</strong>
+            </div>
+            {p.tech_stack && <p style={{ fontSize: '0.75rem', color: accent, margin: '2px 0 4px' }}>{p.tech_stack}</p>}
+            <ul style={{ paddingLeft: '1.2rem', margin: 0 }}>
+              {p.bullets.map((b, bi) => <li key={bi} style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: 4 }}>{b}</li>)}
+            </ul>
+          </div>
+        ))}</>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '1.5rem' }}>
+        <div>
+          <SectionTitle accent={accent} label="EDUCATION" />
+          {d.education.map((ed, i) => (
+            <div key={i} style={{ marginBottom: '0.8rem' }}>
+              <strong style={{ fontSize: '0.85rem', color: '#fff', display: 'block' }}>{ed.degree}</strong>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{ed.school}</span>
+            </div>
+          ))}
+        </div>
+        <div>
+          <SectionTitle accent={accent} label="SKILLS" />
+          <SkillsRenderer skills={d.skills} accent={accent} dark />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Designer({ d, accent }) {
+  return (
+    <div style={{ fontFamily: 'Inter, sans-serif', color: '#1e293b', background: '#fafafa', padding: '0', minHeight: 900, display: 'flex' }}>
+      <div style={{ width: '35%', background: '#fff', padding: '3rem 2rem', borderRight: '1px solid #e5e5e5' }}>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: '#111827', lineHeight: 1.1, letterSpacing: -1, marginBottom: '0.5rem' }}>{d.name.split(' ').join('\n')}</h1>
+        <p style={{ fontSize: '1rem', color: accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 2, marginBottom: '2rem' }}>{d.title}</p>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', fontSize: '0.8rem', color: '#52525b', marginBottom: '3rem' }}>
+          {[d.email, d.phone, d.location, d.website, d.linkedin, d.github].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
+        </div>
+
+        <SectionTitle accent={accent} label="EDUCATION" />
+        {d.education.map((ed, i) => (
+          <div key={i} style={{ marginBottom: '1rem' }}>
+            <strong style={{ fontSize: '0.85rem', color: '#18181b', display: 'block' }}>{ed.degree}</strong>
+            <span style={{ fontSize: '0.75rem', color: '#71717a' }}>{ed.school}</span>
+          </div>
+        ))}
+        
+        <div style={{ marginTop: '2rem' }}>
+          <SectionTitle accent={accent} label="SKILLS" />
+          <SkillsRenderer skills={d.skills} accent={accent} />
+        </div>
+      </div>
+      
+      <div style={{ width: '65%', padding: '3rem 2.5rem' }}>
+        {d.summary && <><SectionTitle accent={accent} label="PROFILE" /><HtmlSummary html={d.summary} style={{ fontSize: '0.85rem', lineHeight: 1.7, color: '#3f3f46', marginBottom: '2.5rem' }} /></>}
+        
+        <SectionTitle accent={accent} label="EXPERIENCE" />
+        {d.experience.map((e, i) => (
+          <div key={i} style={{ marginBottom: '1.5rem', position: 'relative' }}>
+            <div style={{ position: 'absolute', left: -16, top: 6, width: 6, height: 6, borderRadius: '50%', background: accent }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+              <strong style={{ fontSize: '0.95rem', color: '#18181b' }}>{e.role}</strong>
+              <span style={{ fontSize: '0.75rem', color: '#a1a1aa', fontWeight: 500, letterSpacing: 1, textTransform: 'uppercase' }}>{e.dates}</span>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: accent, fontWeight: 600, marginBottom: 8 }}>{e.company}</p>
+            <ul style={{ paddingLeft: '1rem', margin: 0 }}>
+              {e.bullets.map((b, bi) => <li key={bi} style={{ fontSize: '0.82rem', color: '#52525b', lineHeight: 1.6, marginBottom: 4 }}>{b}</li>)}
+            </ul>
+          </div>
+        ))}
+
+        {d.projects.length > 0 && d.projects[0].name && (
+          <><SectionTitle accent={accent} label="PROJECTS" />
+          {d.projects.map((p, i) => <ProjEntry key={i} p={p} accent={accent} />)}</>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Timeline({ d, accent }) {
+  return (
+    <div style={{ fontFamily: 'Inter, sans-serif', color: '#1e293b', background: '#fff', padding: '3rem', minHeight: 900 }}>
+      <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+        <h1 style={{ fontSize: '2.4rem', color: '#0f172a', fontWeight: 800, letterSpacing: -0.5 }}>{d.name}</h1>
+        <p style={{ fontSize: '1.1rem', color: accent, fontWeight: 600, margin: '6px 0 12px' }}>{d.title}</p>
+        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.8rem', color: '#64748b' }}>
+          {[d.email, d.phone, d.location, d.website, d.linkedin, d.github].filter(Boolean).map((v, i) => <span key={i}>{v}</span>)}
+        </div>
+      </div>
+      
+      {d.summary && <div style={{ maxWidth: 650, margin: '0 auto 3rem', textAlign: 'center' }}><HtmlSummary html={d.summary} style={{ fontSize: '0.85rem', lineHeight: 1.6, color: '#475569' }} /></div>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '2rem' }}>
+        <div style={{ textAlign: 'right', color: accent, fontWeight: 700, fontSize: '0.8rem', letterSpacing: 1, textTransform: 'uppercase', paddingTop: 4 }}>EXPERIENCE</div>
+        <div style={{ borderLeft: '2px solid #e2e8f0', paddingLeft: '1.5rem', paddingBottom: '2rem' }}>
+          {d.experience.map((e, i) => (
+            <div key={i} style={{ marginBottom: '1.8rem', position: 'relative' }}>
+              <div style={{ position: 'absolute', left: '-1.5rem', top: 5, width: 12, height: 12, borderRadius: '50%', background: '#fff', border: `3px solid ${accent}`, transform: 'translateX(-50%)' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <strong style={{ fontSize: '1rem', color: '#0f172a' }}>{e.role}</strong>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>{e.dates}</span>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: accent, fontWeight: 600, margin: '2px 0 8px' }}>{e.company}</p>
+              <ul style={{ paddingLeft: '1rem', margin: 0 }}>
+                {e.bullets.map((b, bi) => <li key={bi} style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.6, marginBottom: 4 }}>{b}</li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ textAlign: 'right', color: accent, fontWeight: 700, fontSize: '0.8rem', letterSpacing: 1, textTransform: 'uppercase', paddingTop: 4 }}>EDUCATION</div>
+        <div style={{ borderLeft: '2px solid #e2e8f0', paddingLeft: '1.5rem', paddingBottom: '2rem' }}>
+          {d.education.map((ed, i) => (
+            <div key={i} style={{ marginBottom: '1.2rem', position: 'relative' }}>
+              <div style={{ position: 'absolute', left: '-1.5rem', top: 5, width: 12, height: 12, borderRadius: '50%', background: '#fff', border: `3px solid ${accent}`, transform: 'translateX(-50%)' }} />
+              <strong style={{ fontSize: '0.95rem', color: '#0f172a', display: 'block' }}>{ed.degree}</strong>
+              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{ed.school}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ textAlign: 'right', color: accent, fontWeight: 700, fontSize: '0.8rem', letterSpacing: 1, textTransform: 'uppercase', paddingTop: 4 }}>SKILLS</div>
+        <div style={{ borderLeft: '2px solid #e2e8f0', paddingLeft: '1.5rem' }}>
+          <div style={{ position: 'relative' }}>
+            <div style={{ position: 'absolute', left: '-1.5rem', top: 5, width: 12, height: 12, borderRadius: '50%', background: '#fff', border: `3px solid ${accent}`, transform: 'translateX(-50%)' }} />
+            <SkillsRenderer skills={d.skills} accent={accent} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Shared Sub-components ─── */
 function SectionTitle({ accent, label, center, elegant, compact }) {
   if (elegant) return (
@@ -694,11 +862,11 @@ function SkillsRenderer({ skills, accent, dark }) {
 
 
 /* ─── Main Export ─── */
-const RENDERERS = { minimalist: Minimalist, executive: Executive, modern: Modern, creative: Creative, tech: Tech, sidebar: Sidebar, bold: Bold, elegant: Elegant, compact: Compact, academic: Academic, professional: Professional };
+const RENDERERS = { minimalist: Minimalist, executive: Executive, modern: Modern, creative: Creative, tech: Tech, sidebar: Sidebar, bold: Bold, elegant: Elegant, compact: Compact, academic: Academic, professional: Professional, startup: Startup, designer: Designer, timeline: Timeline };
 
 const ACCENT_MAP = {
   minimalist: '#1e293b', executive: '#1e3a5f', modern: '#3b28cc', compact: '#374151', academic: '#1f2937',
-  creative: '#6366f1', tech: '#0f172a', sidebar: '#0891b2', bold: '#dc2626', elegant: '#92400e', professional: '#334155',
+  creative: '#6366f1', tech: '#0f172a', sidebar: '#0891b2', bold: '#dc2626', elegant: '#92400e', professional: '#334155', startup: '#3b82f6', designer: '#ec4899', timeline: '#f59e0b',
 };
 
 export default function ResumePreview({ templateId, formData, accentColor }) {

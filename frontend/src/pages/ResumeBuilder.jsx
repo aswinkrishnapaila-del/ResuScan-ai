@@ -150,52 +150,40 @@ function PhoneInput({ value, onChange }) {
     : COUNTRY_CODES;
 
   return (
-    <div style={{ display: 'flex', gap: 8 }} ref={ref}>
+    <div className="flex gap-2" ref={ref}>
       {/* Code Selector */}
-      <div style={{ position: 'relative', flexShrink: 0 }}>
+      <div className="relative shrink-0">
         <button
           type="button"
           onClick={() => setOpen(o => !o)}
-          style={{
-            height: 42, padding: '0 12px', border: '1px solid var(--border-color)',
-            borderRadius: 8, background: 'var(--card-bg)', cursor: 'pointer', fontFamily: 'inherit',
-            fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
-            color: 'var(--text-main)'
-          }}
+          className="h-[42px] px-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm flex items-center gap-1.5 whitespace-nowrap hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
         >
           {code} ▾
         </button>
         {open && (
-          <div style={{
-            position: 'absolute', top: '100%', left: 0, zIndex: 1000,
-            background: 'var(--card-bg)', border: '1px solid var(--border-color)',
-            borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-            width: 230, maxHeight: 250, display: 'flex', flexDirection: 'column', marginTop: 2
-          }}>
-            <input
-              className="form-input"
-              style={{ margin: 6, width: 'calc(100% - 12px)', boxSizing: 'border-box' }}
-              placeholder="Search country..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              autoFocus
-            />
-            <div style={{ overflowY: 'auto', flex: 1 }}>
+          <div className="absolute top-full left-0 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl w-[230px] max-h-[250px] flex flex-col mt-1 overflow-hidden">
+            <div className="p-1.5 border-b border-slate-100 dark:border-slate-700">
+              <input
+                className="form-input w-full text-sm py-1.5 px-2"
+                placeholder="Search country..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="overflow-y-auto flex-1 py-1">
               {filtered.map((c, i) => (
                 <div
                   key={i}
                   onMouseDown={() => handleCodeSelect(c.code)}
-                  style={{
-                    padding: '8px 12px', cursor: 'pointer', fontSize: '0.82rem',
-                    display: 'flex', justifyContent: 'space-between',
-                    background: c.code === code ? 'var(--secondary)' : 'transparent',
-                    color: c.code === code ? 'var(--primary)' : 'var(--text-main)'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--secondary)'}
-                  onMouseLeave={e => e.currentTarget.style.background = c.code === code ? 'var(--secondary)' : 'transparent'}
+                  className={`px-3 py-2 cursor-pointer text-xs flex justify-between items-center transition-colors ${
+                    c.code === code 
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}
                 >
-                  <span>{c.country}</span>
-                  <span style={{ fontWeight: 600 }}>{c.code}</span>
+                  <span className="truncate mr-2">{c.country}</span>
+                  <span className="font-semibold shrink-0">{c.code}</span>
                 </div>
               ))}
             </div>
@@ -204,8 +192,7 @@ function PhoneInput({ value, onChange }) {
       </div>
       {/* Number field */}
       <input
-        className="form-input"
-        style={{ flex: 1 }}
+        className="form-input flex-1"
         type="tel"
         value={number}
         onChange={handleNumberChange}
@@ -301,44 +288,33 @@ function LocationInput({ value, onChange }) {
   }, []);
 
   return (
-    <div ref={containerRef} style={{ position: 'relative' }}>
-      <div style={{ position: 'relative' }}>
+    <div ref={containerRef} className="relative">
+      <div className="relative">
         <input
-          className="form-input"
+          className={`form-input ${loading ? 'pr-10' : ''}`}
           value={value}
           onChange={handleChange}
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
           placeholder="e.g. Bangalore, India"
           autoComplete="off"
-          style={{ paddingRight: loading ? '2.5rem' : undefined }}
         />
         {loading && (
-          <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
-            <Loader2 size={14} className="spin" style={{ color: 'var(--primary)', animation: 'spin 1s linear infinite' }} />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2">
+            <Loader2 size={16} className="animate-spin text-blue-500" />
           </span>
         )}
       </div>
       {showDropdown && suggestions.length > 0 && (
-        <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 999,
-          background: 'var(--card-bg)', border: '1px solid var(--border-color)',
-          borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-          maxHeight: 220, overflowY: 'auto', marginTop: 2
-        }}>
+        <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl max-h-[220px] overflow-y-auto mt-1 flex flex-col py-1">
           {suggestions.map((s, i) => (
             <div
               key={i}
               onMouseDown={() => handleSelect(s)}
-              style={{
-                padding: '9px 14px', cursor: 'pointer', fontSize: '0.85rem',
-                display: 'flex', alignItems: 'center', gap: 8,
-                borderBottom: i < suggestions.length - 1 ? '1px solid var(--border-color)' : 'none',
-                transition: 'background 0.15s'
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--secondary)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              className={`px-4 py-2.5 cursor-pointer text-sm flex items-center gap-2 transition-colors ${
+                i < suggestions.length - 1 ? 'border-b border-slate-100 dark:border-slate-700' : ''
+              } hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300`}
             >
-              <MapPin size={13} color="var(--primary)" style={{ flexShrink: 0 }} />
+              <MapPin size={14} className="shrink-0 text-blue-500" />
               <span>{s}</span>
             </div>
           ))}
@@ -350,38 +326,40 @@ function LocationInput({ value, onChange }) {
 
 /* ── Reusable live preview panel ── */
 function LivePreviewPanel({ templateId, formData, accentColor, zoom, setZoom, showZoomControls = false, label }) {
+  const actualZoom = zoom || 0.55;
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden'
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 14px', background: 'var(--card-bg)',
-        borderBottom: '1px solid var(--border-color)', flexShrink: 0
-      }}>
-        <span style={{ fontWeight: 700, fontSize: '0.75rem', letterSpacing: 1, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 dark:bg-surface-800 border-b border-slate-200 dark:border-slate-700/60 shrink-0">
+        <span className="font-bold text-[10px] tracking-wider uppercase text-slate-500 dark:text-slate-400">
           {label || 'Live Preview'}
         </span>
         {showZoomControls && setZoom && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button className="btn" style={{ padding: '3px 9px', fontSize: '0.8rem' }} onClick={() => setZoom(p => Math.max(0.3, p - 0.05))}>−</button>
-            <span style={{ fontSize: '0.78rem', minWidth: 36, textAlign: 'center', fontWeight: 600 }}>{Math.round((zoom || 0.55) * 100)}%</span>
-            <button className="btn" style={{ padding: '3px 9px', fontSize: '0.8rem' }} onClick={() => setZoom(p => Math.min(1.2, p + 0.05))}>+</button>
+          <div className="flex gap-1 items-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md shadow-sm overflow-hidden">
+            <button className="px-2.5 py-1 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 font-medium transition-colors" onClick={() => setZoom(p => Math.max(0.3, p - 0.05))}>−</button>
+            <span className="text-[11px] font-bold w-10 text-center text-slate-600 dark:text-slate-300 border-x border-slate-200 dark:border-slate-600 py-1">{Math.round(actualZoom * 100)}%</span>
+            <button className="px-2.5 py-1 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 font-medium transition-colors" onClick={() => setZoom(p => Math.min(1.2, p + 0.05))}>+</button>
           </div>
         )}
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', background: '#e8eaf0', padding: '12px' }}>
-        <div style={{
-          transform: `scale(${zoom || 0.55})`,
-          transformOrigin: 'top center',
-          width: `${Math.round((1 / (zoom || 0.55)) * 100)}%`,
-          marginLeft: `${-((1 / (zoom || 0.55)) - 1) * 50}%`,
-          background: '#fff',
-          boxShadow: '0 2px 16px rgba(0,0,0,0.14)',
-          borderRadius: 2,
-          minHeight: 900,
-        }}>
-          <ResumePreview templateId={templateId} formData={formData} accentColor={accentColor} />
+      <div className="flex-1 overflow-auto bg-slate-200/50 dark:bg-slate-900/50 p-6 flex justify-center items-start">
+        <div 
+          style={{
+            width: `${900 * actualZoom}px`,
+            minHeight: `${1164 * actualZoom}px`,
+            flexShrink: 0
+          }}
+        >
+          <div 
+            className="bg-white shadow-xl rounded-sm shrink-0 border border-slate-200 dark:border-none ring-1 ring-black/5 overflow-hidden"
+            style={{
+              transform: `scale(${actualZoom})`,
+              transformOrigin: 'top left',
+              width: '900px',
+              minHeight: '1164px',
+            }} 
+          >
+            <ResumePreview templateId={templateId} formData={formData} accentColor={accentColor} />
+          </div>
         </div>
       </div>
     </div>
@@ -633,17 +611,26 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Wizard Header */}
-      <div className="wizard-header">
+      <div className="flex items-center justify-between mb-8 max-w-3xl mx-auto w-full px-4 relative mt-2">
+        <div className="absolute top-4 left-10 right-10 h-[2px] bg-slate-200 dark:bg-slate-700/60 -z-10" />
         {STEPS.map((s, idx) => (
-          <React.Fragment key={s.num}>
-            <div className={`wizard-step ${step === s.num ? 'active' : step > s.num ? 'completed' : ''}`}>
-              <div className="wizard-step-circle" onClick={() => step > s.num && setStep(s.num)} style={{ cursor: step > s.num ? 'pointer' : 'default' }}>
-                {step > s.num ? <CheckCircle2 size={16} /> : s.num}
-              </div>
-              <span className="wizard-step-label" style={{ position: 'absolute', top: 40, whiteSpace: 'nowrap' }}>{s.label}</span>
-            </div>
-            {idx < STEPS.length - 1 && <div className="wizard-connector" style={{ backgroundColor: step > s.num ? 'var(--primary)' : '#e2e8f0' }} />}
-          </React.Fragment>
+          <div key={s.num} className="relative flex flex-col items-center">
+            <button
+              onClick={() => step > s.num && setStep(s.num)}
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all shadow-sm ${
+                step === s.num
+                  ? 'bg-primary text-white ring-4 ring-primary-100 dark:ring-primary-900/40 scale-110'
+                  : step > s.num
+                  ? 'bg-primary-600 text-white cursor-pointer'
+                  : 'bg-white dark:bg-surface-800 text-slate-400 border border-slate-200 dark:border-slate-700 cursor-default'
+              }`}
+            >
+              {step > s.num ? <CheckCircle2 size={16} /> : s.num}
+            </button>
+            <span className={`absolute top-11 whitespace-nowrap text-[10px] font-semibold uppercase tracking-wider ${step === s.num ? 'text-primary' : 'text-slate-500 dark:text-slate-400'}`}>
+              {s.label}
+            </span>
+          </div>
         ))}
       </div>
 
@@ -651,12 +638,12 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
 
       {/* ── STEP 2: Personal Info ── */}
       {step === 2 && (
-        <div className="builder-split-layout" style={{ flex: 1, minHeight: 0 }}>
-          <div className="builder-form-panel" style={{ overflowY: 'auto' }}>
+        <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto lg:pr-2 pb-10 space-y-6">
             <h2 style={{ fontSize: '1.5rem', marginBottom: 12 }}>Personal Information</h2>
 
             {/* Photo Upload */}
-            <div className="form-group" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+            <div className="space-y-1.5" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
               <div style={{
                 width: 72, height: 72, borderRadius: '50%',
                 background: formData.photo ? 'transparent' : 'var(--secondary)',
@@ -669,7 +656,7 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
                   : <Upload size={24} color="var(--primary)" />}
               </div>
               <div style={{ flex: 1 }}>
-                <label className="form-label" style={{ marginBottom: 4, display: 'block' }}>Profile Photo (Optional)</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5" style={{ marginBottom: 4, display: 'block' }}>Profile Photo (Optional)</label>
                 <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ fontSize: '0.82rem' }} />
                 {formData.photo && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
@@ -682,21 +669,21 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
               </div>
             </div>
 
-            <div className="grid-2" style={{ gap: '1rem' }}>
-              <div className="form-group"><label className="form-label">Full Name</label><input className="form-input" value={formData.name} onChange={e => updateField('name', e.target.value)} placeholder="e.g. Alex Chen" /></div>
-              <div className="form-group"><label className="form-label">Email Address</label><input className="form-input" value={formData.email} onChange={e => updateField('email', e.target.value)} placeholder="you@email.com" /></div>
-              <div className="form-group"><label className="form-label">Mobile Number</label><PhoneInput value={formData.phone} onChange={val => updateField('phone', val)} /></div>
-              <div className="form-group">
-                <label className="form-label">Location / City</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ gap: '1rem' }}>
+              <div className="space-y-1.5"><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Full Name</label><input className="form-input" value={formData.name} onChange={e => updateField('name', e.target.value)} placeholder="e.g. Alex Chen" /></div>
+              <div className="space-y-1.5"><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Email Address</label><input className="form-input" value={formData.email} onChange={e => updateField('email', e.target.value)} placeholder="you@email.com" /></div>
+              <div className="space-y-1.5"><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Mobile Number</label><PhoneInput value={formData.phone} onChange={val => updateField('phone', val)} /></div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Location / City</label>
                 <LocationInput value={formData.location} onChange={val => updateField('location', val)} />
               </div>
-              <div className="form-group"><label className="form-label">LinkedIn Profile</label><input className="form-input" value={formData.linkedin} onChange={e => updateField('linkedin', e.target.value)} placeholder="linkedin.com/in/yourname" /></div>
-              <div className="form-group"><label className="form-label">GitHub Profile</label><input className="form-input" value={formData.github} onChange={e => updateField('github', e.target.value)} placeholder="github.com/yourname" /></div>
-              <div className="form-group"><label className="form-label">Professional Title</label><TitleInput value={formData.title} onChange={val => updateField('title', val)} /></div>
-              <div className="form-group"><label className="form-label">Portfolio Website</label><input className="form-input" value={formData.website} onChange={e => updateField('website', e.target.value)} placeholder="yoursite.com" /></div>
+              <div className="space-y-1.5"><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">LinkedIn Profile</label><input className="form-input" value={formData.linkedin} onChange={e => updateField('linkedin', e.target.value)} placeholder="linkedin.com/in/yourname" /></div>
+              <div className="space-y-1.5"><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">GitHub Profile</label><input className="form-input" value={formData.github} onChange={e => updateField('github', e.target.value)} placeholder="github.com/yourname" /></div>
+              <div className="space-y-1.5"><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Professional Title</label><TitleInput value={formData.title} onChange={val => updateField('title', val)} /></div>
+              <div className="space-y-1.5"><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Portfolio Website</label><input className="form-input" value={formData.website} onChange={e => updateField('website', e.target.value)} placeholder="yoursite.com" /></div>
             </div>
 
-            <h4 style={{ marginBottom: '0.8rem', fontSize: '0.92rem', borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>Profiles</h4>
+            <h4 className="mb-4 text-[0.92rem] font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700/60 pb-2">Profiles</h4>
             {formData.profiles.map((prof, pIdx) => (
               <div key={pIdx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 <input className="form-input" placeholder="Platform (e.g. LeetCode)" value={prof.platform} onChange={e => updateArrayItem('profiles', pIdx, 'platform', e.target.value)} style={{ flex: 1 }} />
@@ -706,9 +693,9 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
             ))}
             <button className="btn btn-outline" style={{ fontSize: '0.8rem', marginBottom: '1.5rem', width: '100%' }} onClick={() => addArrayItem('profiles', { platform: '', url: '' })}><Plus size={14} /> Add Profile</button>
 
-            <div className="form-group">
+            <div className="space-y-1.5">
               <div className="flex-between" style={{ marginBottom: 8 }}>
-                <label className="form-label" style={{ margin: 0 }}>Professional Summary</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5" style={{ margin: 0 }}>Professional Summary</label>
                 <button
                   className="btn"
                   style={{
@@ -734,14 +721,14 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
               />
             </div>
 
-            <div className="builder-nav-row">
+            <div className="flex items-center justify-between pt-6 mt-6 border-t border-slate-200 dark:border-slate-700/60">
               <button className="btn btn-outline" onClick={() => setStep(1)}><ChevronLeft size={16} /> Back</button>
               <button className="btn btn-primary" onClick={() => setStep(3)}>Next: Experience <ChevronRight size={16} /></button>
             </div>
           </div>
 
           {/* Side Preview */}
-          <div className="builder-preview-panel">
+          <div className="hidden lg:flex w-[45%] h-[calc(100vh-180px)] sticky top-4 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-surface-800 shadow-sm overflow-hidden flex-col">
             <LivePreviewPanel {...sidePreviewProps} label="Live Preview" />
           </div>
         </div>
@@ -749,97 +736,97 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
 
       {/* ── STEP 3: Experience & Skills ── */}
       {step === 3 && (
-        <div className="builder-split-layout" style={{ flex: 1, minHeight: 0 }}>
-          <div className="builder-form-panel" style={{ overflowY: 'auto' }}>
+        <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto lg:pr-2 pb-10 space-y-6">
             <h2 style={{ fontSize: '1.5rem', marginBottom: 12 }}>Experience &amp; Credentials</h2>
 
             {/* Work Experience */}
-            <h4 style={{ marginBottom: '0.8rem', fontSize: '0.92rem', borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>Work Experience</h4>
+            <h4 className="mb-4 text-[0.92rem] font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700/60 pb-2">Work Experience</h4>
             {formData.experience.map((exp, expIdx) => (
-              <div key={expIdx} className="card" style={{ marginBottom: '1rem', position: 'relative' }}>
-                <button onClick={() => removeArrayItem('experience', expIdx)} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
-                <div className="grid-2" style={{ gap: '0.8rem', marginBottom: '0.8rem' }}>
-                  <div><label className="form-label">Role / Title</label><input className="form-input" value={exp.role} onChange={e => updateArrayItem('experience', expIdx, 'role', e.target.value)} /></div>
-                  <div><label className="form-label">Company Name</label><input className="form-input" value={exp.company} onChange={e => updateArrayItem('experience', expIdx, 'company', e.target.value)} /></div>
+              <div key={expIdx} className="card mb-4 relative shadow-sm border border-slate-200 dark:border-slate-700/60 p-5">
+                <button onClick={() => removeArrayItem('experience', expIdx)} className="absolute top-2.5 right-2.5 text-slate-400 hover:text-red-500 transition-colors bg-white dark:bg-surface-800 p-1 rounded-md"><Trash2 size={16} /></button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Role / Title</label><input className="form-input" value={exp.role} onChange={e => updateArrayItem('experience', expIdx, 'role', e.target.value)} /></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Company Name</label><input className="form-input" value={exp.company} onChange={e => updateArrayItem('experience', expIdx, 'company', e.target.value)} /></div>
                 </div>
-                <div style={{ marginBottom: '0.8rem' }}><label className="form-label">Duration</label><input className="form-input" placeholder="e.g. July 2023 – Present" value={exp.dates} onChange={e => updateArrayItem('experience', expIdx, 'dates', e.target.value)} /></div>
+                <div style={{ marginBottom: '0.8rem' }}><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Duration</label><input className="form-input" placeholder="e.g. July 2023 – Present" value={exp.dates} onChange={e => updateArrayItem('experience', expIdx, 'dates', e.target.value)} /></div>
 
-                <label className="form-label">Key Responsibilities / Bullets</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Key Responsibilities / Bullets</label>
                 {exp.bullets.map((b, bIdx) => {
                   const key = `experience-${expIdx}-${bIdx}`;
                   return (
                     <div key={bIdx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
                       <div style={{ flex: 1 }}>
-                        <textarea className="form-input" style={{ minHeight: '58px', width: '100%', resize: 'vertical' }} value={b} onChange={e => updateBullet('experience', expIdx, bIdx, e.target.value)} />
-                        <button className="btn" style={{ fontSize: '0.7rem', padding: '2px 8px', marginTop: 4, background: 'var(--secondary)', color: 'var(--primary)' }}
+                        <textarea className="form-input w-full min-h-[60px] resize-y py-2 text-sm leading-relaxed" value={b} onChange={e => updateBullet('experience', expIdx, bIdx, e.target.value)} placeholder="• Describe what you did and the impact it had..." />
+                        <button className="btn flex items-center gap-1.5 text-[11px] py-1 px-2.5 mt-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 border-none rounded" 
                           onClick={() => handleImproveBullet('experience', expIdx, bIdx, b)} disabled={improvingIdx === key}>
                           {improvingIdx === key ? 'Improving…' : <><Sparkles size={12} /> Improve with AI</>}
                         </button>
                       </div>
-                      <button onClick={() => removeBullet('experience', expIdx, bIdx)} style={{ background: 'none', border: 'none', color: '#ef4444', marginTop: 8, cursor: 'pointer' }}><Trash2 size={16} /></button>
+                      <button onClick={() => removeBullet('experience', expIdx, bIdx)} className="text-red-400 hover:text-red-600 mt-2.5 p-1 transition-colors"><Trash2 size={16} /></button>
                     </div>
                   );
                 })}
-                <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={() => addBullet('experience', expIdx)}><Plus size={14} /> Add Bullet Point</button>
+                <button className="btn btn-ghost text-xs py-1 px-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 mt-1" onClick={() => addBullet('experience', expIdx)}><Plus size={14} /> Add Bullet Point</button>
               </div>
             ))}
-            <button className="btn btn-outline" style={{ marginBottom: '1.5rem', width: '100%' }} onClick={() => addArrayItem('experience', { role: '', company: '', dates: '', bullets: [''] })}><Plus size={16} /> Add New Experience</button>
+            <button className="btn border-dashed border-2 border-slate-300 dark:border-slate-700 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-400 w-full mb-6 py-3" onClick={() => addArrayItem('experience', { role: '', company: '', dates: '', bullets: [''] })}><Plus size={16} /> Add New Experience</button>
 
             {/* Projects */}
-            <h4 style={{ marginBottom: '0.8rem', fontSize: '0.92rem', borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>Projects</h4>
+            <h4 className="mb-4 text-[0.92rem] font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700/60 pb-2">Projects</h4>
             {formData.projects.map((proj, pIdx) => (
-              <div key={pIdx} className="card" style={{ marginBottom: '1rem', position: 'relative' }}>
-                <button onClick={() => removeArrayItem('projects', pIdx)} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
-                <div className="grid-2" style={{ gap: '0.8rem', marginBottom: '0.8rem' }}>
-                  <div><label className="form-label">Project Name</label><input className="form-input" value={proj.name} onChange={e => updateArrayItem('projects', pIdx, 'name', e.target.value)} /></div>
-                  <div><label className="form-label">Project Link</label><input className="form-input" value={proj.link} onChange={e => updateArrayItem('projects', pIdx, 'link', e.target.value)} /></div>
+              <div key={pIdx} className="card mb-4 relative shadow-sm border border-slate-200 dark:border-slate-700/60 p-5">
+                <button onClick={() => removeArrayItem('projects', pIdx)} className="absolute top-2.5 right-2.5 text-slate-400 hover:text-red-500 transition-colors bg-white dark:bg-surface-800 p-1 rounded-md"><Trash2 size={16} /></button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Project Name</label><input className="form-input" value={proj.name} onChange={e => updateArrayItem('projects', pIdx, 'name', e.target.value)} /></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Project Link</label><input className="form-input" value={proj.link} onChange={e => updateArrayItem('projects', pIdx, 'link', e.target.value)} /></div>
                 </div>
-                <div style={{ marginBottom: '0.8rem' }}><label className="form-label">Tech Stack</label><input className="form-input" value={proj.tech_stack} onChange={e => updateArrayItem('projects', pIdx, 'tech_stack', e.target.value)} /></div>
+                <div style={{ marginBottom: '0.8rem' }}><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Tech Stack</label><input className="form-input" value={proj.tech_stack} onChange={e => updateArrayItem('projects', pIdx, 'tech_stack', e.target.value)} /></div>
 
-                <label className="form-label">Project Details / Bullets</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Project Details / Bullets</label>
                 {proj.bullets.map((b, bIdx) => {
                   const key = `projects-${pIdx}-${bIdx}`;
                   return (
                     <div key={bIdx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
                       <div style={{ flex: 1 }}>
-                        <textarea className="form-input" style={{ minHeight: '58px', width: '100%', resize: 'vertical' }} value={b} onChange={e => updateBullet('projects', pIdx, bIdx, e.target.value)} />
-                        <button className="btn" style={{ fontSize: '0.7rem', padding: '2px 8px', marginTop: 4, background: 'var(--secondary)', color: 'var(--primary)' }}
+                        <textarea className="form-input w-full min-h-[60px] resize-y py-2 text-sm leading-relaxed" value={b} onChange={e => updateBullet('projects', pIdx, bIdx, e.target.value)} placeholder="• Describe what you did and the impact it had..." />
+                        <button className="btn flex items-center gap-1.5 text-[11px] py-1 px-2.5 mt-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 border-none rounded" 
                           onClick={() => handleImproveBullet('projects', pIdx, bIdx, b)} disabled={improvingIdx === key}>
                           {improvingIdx === key ? 'Improving…' : <><Sparkles size={12} /> Improve with AI</>}
                         </button>
                       </div>
-                      <button onClick={() => removeBullet('projects', pIdx, bIdx)} style={{ background: 'none', border: 'none', color: '#ef4444', marginTop: 8, cursor: 'pointer' }}><Trash2 size={16} /></button>
+                      <button onClick={() => removeBullet('projects', pIdx, bIdx)} className="text-red-400 hover:text-red-600 mt-2.5 p-1 transition-colors"><Trash2 size={16} /></button>
                     </div>
                   );
                 })}
-                <button className="btn btn-outline" style={{ fontSize: '0.8rem' }} onClick={() => addBullet('projects', pIdx)}><Plus size={14} /> Add Bullet Point</button>
+                <button className="btn btn-ghost text-xs py-1 px-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 mt-1" onClick={() => addBullet('projects', pIdx)}><Plus size={14} /> Add Bullet Point</button>
               </div>
             ))}
-            <button className="btn btn-outline" style={{ marginBottom: '1.5rem', width: '100%' }} onClick={() => addArrayItem('projects', { name: '', link: '', tech_stack: '', bullets: [''] })}><Plus size={16} /> Add New Project</button>
+            <button className="btn border-dashed border-2 border-slate-300 dark:border-slate-700 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-400 w-full mb-6 py-3" onClick={() => addArrayItem('projects', { name: '', link: '', tech_stack: '', bullets: [''] })}><Plus size={16} /> Add New Project</button>
 
             {/* Education */}
-            <h4 style={{ marginBottom: '0.8rem', fontSize: '0.92rem', borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>Education</h4>
+            <h4 className="mb-4 text-[0.92rem] font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700/60 pb-2">Education</h4>
             {formData.education.map((ed, edIdx) => (
-              <div key={edIdx} className="card" style={{ marginBottom: '1rem', position: 'relative' }}>
-                <button onClick={() => removeArrayItem('education', edIdx)} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
-                <div className="grid-2" style={{ gap: '0.8rem', marginBottom: '0.8rem' }}>
-                  <div><label className="form-label">College / School Name</label><input className="form-input" value={ed.school} onChange={e => updateArrayItem('education', edIdx, 'school', e.target.value)} /></div>
-                  <div><label className="form-label">Degree</label><input className="form-input" value={ed.degree} onChange={e => updateArrayItem('education', edIdx, 'degree', e.target.value)} /></div>
+              <div key={edIdx} className="card mb-4 relative shadow-sm border border-slate-200 dark:border-slate-700/60 p-5">
+                <button onClick={() => removeArrayItem('education', edIdx)} className="absolute top-2.5 right-2.5 text-slate-400 hover:text-red-500 transition-colors bg-white dark:bg-surface-800 p-1 rounded-md"><Trash2 size={16} /></button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">College / School Name</label><input className="form-input" value={ed.school} onChange={e => updateArrayItem('education', edIdx, 'school', e.target.value)} /></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Degree</label><input className="form-input" value={ed.degree} onChange={e => updateArrayItem('education', edIdx, 'degree', e.target.value)} /></div>
                 </div>
-                <div className="grid-2" style={{ gap: '0.8rem', marginBottom: '0.8rem' }}>
-                  <div><label className="form-label">CGPA / Score</label><input className="form-input" value={ed.cgpa} onChange={e => updateArrayItem('education', edIdx, 'cgpa', e.target.value)} /></div>
-                  <div><label className="form-label">City</label><input className="form-input" value={ed.city} onChange={e => updateArrayItem('education', edIdx, 'city', e.target.value)} /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">CGPA / Score</label><input className="form-input" value={ed.cgpa} onChange={e => updateArrayItem('education', edIdx, 'cgpa', e.target.value)} /></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">City</label><input className="form-input" value={ed.city} onChange={e => updateArrayItem('education', edIdx, 'city', e.target.value)} /></div>
                 </div>
-                <div className="grid-2" style={{ gap: '0.8rem' }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ gap: '0.8rem' }}>
                   <div>
-                    <label className="form-label">Start Date</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Start Date</label>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <select className="form-input" value={ed.startMonth} onChange={e => updateArrayItem('education', edIdx, 'startMonth', e.target.value)}><option value="">Month</option>{MONTHS.map(m => <option key={m} value={m}>{m}</option>)}</select>
                       <select className="form-input" value={ed.startYear} onChange={e => updateArrayItem('education', edIdx, 'startYear', e.target.value)}><option value="">Year</option>{YEARS.map(y => <option key={y} value={y}>{y}</option>)}</select>
                     </div>
                   </div>
                   <div>
-                    <label className="form-label">End Date</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">End Date</label>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <select className="form-input" value={ed.endMonth} onChange={e => updateArrayItem('education', edIdx, 'endMonth', e.target.value)}><option value="">Month</option>{MONTHS.map(m => <option key={m} value={m}>{m}</option>)}</select>
                       <select className="form-input" value={ed.endYear} onChange={e => updateArrayItem('education', edIdx, 'endYear', e.target.value)}><option value="">Year</option>{YEARS.map(y => <option key={y} value={y}>{y}</option>)}</select>
@@ -848,10 +835,10 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
                 </div>
               </div>
             ))}
-            <button className="btn btn-outline" style={{ marginBottom: '1.5rem', width: '100%' }} onClick={() => addArrayItem('education', { degree: '', school: '', startMonth: '', startYear: '', endMonth: '', endYear: '', city: '', cgpa: '' })}><Plus size={16} /> Add Education</button>
+            <button className="btn border-dashed border-2 border-slate-300 dark:border-slate-700 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-400 w-full mb-6 py-3" onClick={() => addArrayItem('education', { degree: '', school: '', startMonth: '', startYear: '', endMonth: '', endYear: '', city: '', cgpa: '' })}><Plus size={16} /> Add Education</button>
 
             {/* Achievements & Certifications */}
-            <h4 style={{ marginBottom: '0.8rem', fontSize: '0.92rem', borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>Achievements &amp; Certifications</h4>
+            <h4 className="mb-4 text-[0.92rem] font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700/60 pb-2">Achievements &amp; Certifications</h4>
             {formData.awards.map((aw, aIdx) => {
               const key = `awards-${aIdx}`;
               return (
@@ -859,50 +846,50 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input className="form-input" placeholder="Achievement/Cert Name" value={aw.name} onChange={e => updateArrayItem('awards', aIdx, 'name', e.target.value)} style={{ flex: 2 }} />
                     <input className="form-input" placeholder="Year" value={aw.year} onChange={e => updateArrayItem('awards', aIdx, 'year', e.target.value)} style={{ flex: 1 }} />
-                    <button onClick={() => removeArrayItem('awards', aIdx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
+                    <button onClick={() => removeArrayItem('awards', aIdx)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-2 rounded-md"><Trash2 size={16} /></button>
                   </div>
-                  <button className="btn" style={{ alignSelf: 'flex-start', fontSize: '0.7rem', padding: '2px 8px', background: 'var(--secondary)', color: 'var(--primary)' }}
+                  <button className="btn self-start flex items-center gap-1.5 text-[11px] py-1 px-2.5 mt-1 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 border-none rounded" 
                     onClick={() => handleImproveAchievement('awards', aIdx, aw.name)} disabled={improvingIdx === key}>
                     {improvingIdx === key ? 'Improving…' : <><Sparkles size={12} /> Improve with AI</>}
                   </button>
                 </div>
               );
             })}
-            <button className="btn btn-outline" style={{ fontSize: '0.8rem', width: '100%', marginBottom: '1.5rem' }} onClick={() => addArrayItem('awards', { name: '', year: '' })}><Plus size={14} /> Add Achievement/Certification</button>
+            <button className="btn border-dashed border-2 border-slate-300 dark:border-slate-700 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-400 w-full mb-6 py-3" onClick={() => addArrayItem('awards', { name: '', year: '' })}><Plus size={16} /> Add Achievement/Certification</button>
 
             {/* Publications */}
-            <h4 style={{ marginBottom: '0.8rem', fontSize: '0.92rem', borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>Publications (Optional)</h4>
+            <h4 className="mb-4 text-[0.92rem] font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700/60 pb-2">Publications (Optional)</h4>
             {formData.publications.map((pub, pIdx) => (
               <div key={pIdx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 <input className="form-input" placeholder="Title" value={pub.title} onChange={e => updateArrayItem('publications', pIdx, 'title', e.target.value)} style={{ flex: 2 }} />
                 <input className="form-input" placeholder="Link" value={pub.link} onChange={e => updateArrayItem('publications', pIdx, 'link', e.target.value)} style={{ flex: 1 }} />
-                <button onClick={() => removeArrayItem('publications', pIdx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
+                <button onClick={() => removeArrayItem('publications', pIdx)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-2 rounded-md"><Trash2 size={16} /></button>
               </div>
             ))}
-            <button className="btn btn-outline" style={{ fontSize: '0.8rem', width: '100%', marginBottom: '1.5rem' }} onClick={() => addArrayItem('publications', { title: '', link: '', year: '' })}><Plus size={14} /> Add Publication</button>
+            <button className="btn border-dashed border-2 border-slate-300 dark:border-slate-700 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-400 w-full mb-6 py-3" onClick={() => addArrayItem('publications', { title: '', link: '', year: '' })}><Plus size={16} /> Add Publication</button>
 
             {/* Technical Skills */}
-            <h4 style={{ margin: '0.5rem 0 0.8rem', fontSize: '0.92rem', borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>Technical Skills</h4>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              <select className="form-input" value={formData.skillInput.category} onChange={e => updateField('skillInput', { ...formData.skillInput, category: e.target.value })} style={{ flex: 1 }}>
+            <h4 className="mt-2 mb-4 text-[0.92rem] font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700/60 pb-2">Technical Skills</h4>
+            <div className="flex gap-2 mb-4">
+              <select className="form-input flex-1" value={formData.skillInput.category} onChange={e => updateField('skillInput', { ...formData.skillInput, category: e.target.value })}>
                 <option value="languages">Languages</option>
                 <option value="frontend">Frontend</option>
                 <option value="backend">Backend &amp; Cloud</option>
                 <option value="ai_tools">AI &amp; Tools</option>
               </select>
-              <input className="form-input" placeholder="Type a skill and press Add…" value={formData.skillInput.text}
+              <input className="form-input flex-[2]" placeholder="Type a skill and press Add…" value={formData.skillInput.text}
                 onChange={e => updateField('skillInput', { ...formData.skillInput, text: e.target.value })}
-                onKeyDown={e => e.key === 'Enter' && addSkill()} style={{ flex: 2 }} />
+                onKeyDown={e => e.key === 'Enter' && addSkill()} />
               <button className="btn btn-primary" onClick={addSkill}>Add</button>
             </div>
             {['languages', 'frontend', 'backend', 'ai_tools'].map(category => (
               formData.skills[category] && formData.skills[category].length > 0 && (
                 <div key={category} style={{ marginBottom: 10 }}>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>{category.replace('_', ' ')}</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{category.replace('_', ' ')}</p>
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {formData.skills[category].map(s => (
-                      <span key={s} style={{ padding: '4px 12px', background: 'var(--secondary)', color: 'var(--primary)', borderRadius: 20, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {s} <span onClick={() => removeSkill(category, s)} style={{ cursor: 'pointer', color: '#94a3b8', fontSize: '1rem', lineHeight: 1 }}>×</span>
+                      <span key={s} className="px-3 py-1 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs font-medium flex items-center gap-1.5 border border-blue-100 dark:border-blue-800/50">
+                        {s} <span onClick={() => removeSkill(category, s)} className="cursor-pointer text-slate-400 hover:text-red-500 text-sm leading-none transition-colors">×</span>
                       </span>
                     ))}
                   </div>
@@ -910,14 +897,14 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
               )
             ))}
 
-            <div className="builder-nav-row" style={{ marginTop: '1.5rem' }}>
+            <div className="flex items-center justify-between pt-6 mt-6 border-t border-slate-200 dark:border-slate-700/60" style={{ marginTop: '1.5rem' }}>
               <button className="btn btn-outline" onClick={() => setStep(2)}><ChevronLeft size={16} /> Back</button>
               <button className="btn btn-primary" onClick={() => setStep(4)}>Next: Final Polish <ChevronRight size={16} /></button>
             </div>
           </div>
 
           {/* Side Preview */}
-          <div className="builder-preview-panel">
+          <div className="hidden lg:flex w-[45%] h-[calc(100vh-180px)] sticky top-4 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-surface-800 shadow-sm overflow-hidden flex-col">
             <LivePreviewPanel {...sidePreviewProps} label="Live Preview" />
           </div>
         </div>
@@ -925,26 +912,21 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
 
       {/* ── STEP 4: Final Polish ── */}
       {step === 4 && (
-        <div style={{ marginTop: '1rem', flex: 1, minHeight: 0 }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: 4 }}>Final Polish</h2>
-          <p style={{ fontSize: '0.85rem', marginBottom: '1.5rem', color: 'var(--text-muted)' }}>Change template or accent color, then export your resume.</p>
+        <div className="mt-4 flex-1 min-h-0">
+          <h2 className="text-2xl font-bold mb-1 text-slate-800 dark:text-slate-100">Final Polish</h2>
+          <p className="text-sm mb-6 text-slate-500 dark:text-slate-400">Change template or accent color, then export your resume.</p>
 
-          <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: '1fr 1.6fr', alignItems: 'start', height: 'calc(100vh - 260px)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', overflowY: 'auto', height: '100%', paddingRight: 4 }}>
+          <div className="grid gap-8 grid-cols-1 lg:grid-cols-[1fr_1.6fr] items-start h-[calc(100vh-260px)]">
+            <div className="flex flex-col gap-5 overflow-y-auto h-full pr-1">
 
               {/* Template Picker */}
               <div className="card">
-                <h4 style={{ fontSize: '0.92rem', marginBottom: '1rem' }}>🎨 Change Template</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                <h4 className="text-[0.92rem] font-bold mb-4 flex items-center gap-2"><span className="text-lg">🎨</span> Change Template</h4>
+                <div className="grid grid-cols-2 gap-2">
                   {TEMPLATES.map(t => (
-                    <div key={t.id} onClick={() => setSelectedTemplate(t.id)} style={{
-                      padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
-                      border: selectedTemplate === t.id ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                      background: selectedTemplate === t.id ? 'var(--secondary)' : 'var(--card-bg)',
-                      transition: 'all 0.2s'
-                    }}>
-                      <p style={{ fontWeight: 600, fontSize: '0.82rem', color: selectedTemplate === t.id ? 'var(--primary)' : 'var(--text-main)' }}>{t.name}</p>
-                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{t.type}</p>
+                    <div key={t.id} onClick={() => setSelectedTemplate(t.id)} className={`p-3 rounded-lg cursor-pointer transition-all border-2 ${selectedTemplate === t.id ? 'border-primary-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm' : 'border-slate-200 dark:border-slate-700/60 bg-white dark:bg-surface-800 hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                      <p className={`font-semibold text-sm ${selectedTemplate === t.id ? 'text-primary-600 dark:text-primary-400' : 'text-slate-700 dark:text-slate-300'}`}>{t.name}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.type}</p>
                     </div>
                   ))}
                 </div>
@@ -952,8 +934,8 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
 
               {/* Accent Color */}
               <div className="card">
-                <h4 style={{ fontSize: '0.92rem', marginBottom: '1rem' }}>🎨 Accent Color</h4>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <h4 className="text-[0.92rem] font-bold mb-4 flex items-center gap-2"><span className="text-lg">🖌️</span> Accent Color</h4>
+                <div className="flex flex-wrap gap-3">
                   {ACCENT_OPTIONS.map(c => (
                     <div key={c} onClick={() => setAccentColor(c)} style={{
                       width: 32, height: 32, borderRadius: '50%', background: c, cursor: 'pointer',
@@ -966,7 +948,7 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+              <div className="grid grid-cols-2 gap-3">
                 <button className="btn btn-outline" style={{ padding: 12 }} onClick={saveDraft}>💾 Save Draft</button>
                 <button className="btn btn-outline" style={{ padding: 12 }} onClick={handlePrint}>🖨️ Print</button>
               </div>
@@ -979,7 +961,7 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
             </div>
 
             {/* Live Preview with zoom */}
-            <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', border: '1px solid var(--border-color)', borderRadius: 14, overflow: 'hidden', background: 'var(--card-bg)' }}>
+            <div className="h-full min-h-0 flex flex-col border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-surface-800">
               <LivePreviewPanel
                 templateId={selectedTemplate}
                 formData={formData}

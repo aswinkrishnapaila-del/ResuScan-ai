@@ -9,3 +9,6 @@ python-dotenv
 jinja2
 xhtml2pdf
 supabase==2.15.0
+scikit-learn
+requests
+

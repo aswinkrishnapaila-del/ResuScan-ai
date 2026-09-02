@@ -12,6 +12,9 @@ export const TEMPLATES = [
   { id: 'sidebar', name: 'Sidebar', desc: 'Colored left sidebar with icon-based sections.', type: 'Design-Forward', color: '#0891b2' },
   { id: 'bold', name: 'Bold', desc: 'Large name treatment and strong typographic hierarchy.', type: 'Design-Forward', color: '#dc2626' },
   { id: 'elegant', name: 'Elegant', desc: 'Refined spacing with gold accent lines and serif feel.', type: 'Design-Forward', color: '#92400e' },
+  { id: 'startup', name: 'Startup', desc: 'Dark modern theme built for cutting-edge tech.', type: 'Design-Forward', color: '#3b82f6' },
+  { id: 'designer', name: 'Designer', desc: 'Two-column layout focusing on typography.', type: 'Design-Forward', color: '#ec4899' },
+  { id: 'timeline', name: 'Timeline', desc: 'Clean chronological focus with timeline markers.', type: 'ATS-Friendly', color: '#f59e0b' },
 ];
 
 function TemplateThumbnail({ template }) {
@@ -180,6 +183,73 @@ function TemplateThumbnail({ template }) {
     </div>
   );
 
+
+  if (template.id === 'startup') return (
+    <div style={{ width: '100%', height: '100%', background: '#0f172a', padding: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${c}`, paddingBottom: 6, marginBottom: 8 }}>
+        <div style={{ width: '50%' }}>
+          <div style={{ background: '#fff', height: 10, width: '100%', borderRadius: 2, marginBottom: 4 }} />
+          <div style={{ background: c, height: 4, width: '70%', borderRadius: 2 }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-end', width: '30%' }}>
+          {[1,2,3].map(i => <div key={i} style={{ background: '#64748b', height: 2, width: '100%', borderRadius: 1 }} />)}
+        </div>
+      </div>
+      <div style={{ background: '#334155', height: 4, width: '30%', borderRadius: 2, marginBottom: 6 }} />
+      {[1,2].map(i => (
+        <div key={i} style={{ marginBottom: 6 }}>
+          <div style={{ background: '#fff', height: 4, width: '40%', borderRadius: 2, marginBottom: 3 }} />
+          {['90%','80%'].map((w,j) => <div key={j} style={{ background: '#475569', height: 2, width: w, borderRadius: 1, marginBottom: 2 }} />)}
+        </div>
+      ))}
+    </div>
+  );
+
+  if (template.id === 'designer') return (
+    <div style={{ width: '100%', height: '100%', background: '#fafafa', display: 'flex' }}>
+      <div style={{ width: '35%', background: '#fff', padding: '12px 8px', borderRight: '1px solid #e5e5e5' }}>
+        <div style={{ background: '#111827', height: 8, width: '80%', borderRadius: 2, marginBottom: 2 }} />
+        <div style={{ background: '#111827', height: 8, width: '60%', borderRadius: 2, marginBottom: 6 }} />
+        <div style={{ background: c, height: 4, width: '70%', borderRadius: 2, marginBottom: 8 }} />
+        {[1,2,3].map(i => <div key={i} style={{ background: '#a1a1aa', height: 2, width: '90%', borderRadius: 1, marginBottom: 3 }} />)}
+      </div>
+      <div style={{ flex: 1, padding: '12px 10px' }}>
+        <div style={{ background: c, height: 4, width: '30%', borderRadius: 2, marginBottom: 6 }} />
+        {[1,2].map(i => (
+          <div key={i} style={{ marginBottom: 6, position: 'relative', paddingLeft: 6 }}>
+            <div style={{ position: 'absolute', left: 0, top: 1, width: 3, height: 3, borderRadius: '50%', background: c }} />
+            <div style={{ background: '#18181b', height: 4, width: '50%', borderRadius: 2, marginBottom: 3 }} />
+            {['95%','85%'].map((w,j) => <div key={j} style={{ background: '#d4d4d8', height: 2, width: w, borderRadius: 1, marginBottom: 2 }} />)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (template.id === 'timeline') return (
+    <div style={{ width: '100%', height: '100%', background: '#fff', padding: '12px' }}>
+      <div style={{ textAlign: 'center', marginBottom: 8 }}>
+        <div style={{ background: '#0f172a', height: 10, width: '60%', borderRadius: 2, margin: '0 auto 4px' }} />
+        <div style={{ background: c, height: 4, width: '40%', borderRadius: 2, margin: '0 auto' }} />
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ width: '25%', textAlign: 'right', paddingTop: 2 }}>
+          <div style={{ background: c, height: 3, width: '80%', borderRadius: 2, marginLeft: 'auto', marginBottom: 12 }} />
+          <div style={{ background: c, height: 3, width: '80%', borderRadius: 2, marginLeft: 'auto' }} />
+        </div>
+        <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: 6, flex: 1 }}>
+          {[1,2].map(i => (
+            <div key={i} style={{ marginBottom: 8, position: 'relative' }}>
+              <div style={{ position: 'absolute', left: -9, top: 1, width: 5, height: 5, borderRadius: '50%', background: '#fff', border: `1px solid ${c}` }} />
+              <div style={{ background: '#0f172a', height: 4, width: '50%', borderRadius: 2, marginBottom: 3 }} />
+              {['90%','85%'].map((w,j) => <div key={j} style={{ background: '#cbd5e1', height: 2, width: w, borderRadius: 1, marginBottom: 2 }} />)}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   // academic default
   return (
     <div style={{ width: '100%', height: '100%', background: '#fff', padding: '10px 12px' }}>
@@ -207,17 +277,17 @@ export default function TemplateGallery({ selected, onSelect, onNext }) {
   const filtered = filter === 'All' ? TEMPLATES : TEMPLATES.filter(t => t.type === filter);
 
   return (
-    <div style={{ marginTop: '1.5rem' }}>
-      <div className="flex-between" style={{ marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+    <div className="mt-6">
+      <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
         <div>
-          <h2 style={{ fontSize: '1.8rem', marginBottom: '0.4rem' }}>Choose a Template</h2>
-          <p style={{ fontSize: '0.9rem' }}>Select a high-fidelity foundation for your professional narrative.</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1.5">Choose a Template</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Select a high-fidelity foundation for your professional narrative.</p>
         </div>
-        <div className="filter-tabs">
+        <div className="flex flex-wrap gap-2">
           {['All', 'ATS-Friendly', 'Design-Forward'].map(f => (
             <button
               key={f}
-              className={`filter-tab-btn ${filter === f ? 'active' : ''}`}
+              className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${filter === f ? 'bg-slate-800 dark:bg-white text-white dark:text-slate-900 shadow' : 'bg-slate-100 dark:bg-surface-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-surface-700'}`}
               onClick={() => setFilter(f)}
             >
               {f === 'All' ? 'All Templates' : f}
@@ -226,26 +296,24 @@ export default function TemplateGallery({ selected, onSelect, onNext }) {
         </div>
       </div>
 
-      <div className="template-gallery-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map(tpl => (
           <div
             key={tpl.id}
-            className={`template-gallery-card ${selected === tpl.id ? 'selected' : ''}`}
+            className={`group relative p-4 rounded-2xl cursor-pointer transition-all border-2 ${selected === tpl.id ? 'border-primary bg-primary-50 dark:bg-primary-900/10 shadow-md' : 'border-transparent bg-white dark:bg-surface-800 hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-1 shadow-sm'}`}
             onClick={() => onSelect(tpl.id)}
           >
-            <div className="template-thumb-wrap">
-              <span className={`badge ${tpl.type === 'ATS-Friendly' ? 'badge-primary' : 'badge-warning'}`}
-                style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, fontSize: '0.65rem' }}>
+            <div className="relative h-64 w-full mb-4 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900/50">
+              <span className={`absolute top-3 left-3 z-10 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide shadow-sm ${tpl.type === 'ATS-Friendly' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
                 {tpl.type}
               </span>
               <TemplateThumbnail template={tpl} />
             </div>
-            <div style={{ padding: '10px 4px 4px' }}>
-              <h3 style={{ fontSize: '1rem', marginBottom: 4 }}>{tpl.name}</h3>
-              <p style={{ fontSize: '0.78rem', marginBottom: 12, lineHeight: 1.4 }}>{tpl.desc}</p>
+            <div className="px-1 pt-2 pb-1">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{tpl.name}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">{tpl.desc}</p>
               <button
-                className={`btn ${selected === tpl.id ? 'btn-primary' : 'btn-outline'}`}
-                style={{ width: '100%', borderRadius: 24, fontWeight: 600, fontSize: '0.82rem' }}
+                className={`btn w-full rounded-full font-semibold text-sm ${selected === tpl.id ? 'btn-primary' : 'btn-outline'}`}
                 onClick={e => { e.stopPropagation(); onSelect(tpl.id); }}
               >
                 {selected === tpl.id ? '✓ Selected' : 'Choose template'}
@@ -255,10 +323,10 @@ export default function TemplateGallery({ selected, onSelect, onNext }) {
         ))}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2.5rem' }}>
+      <div className="flex justify-end mt-10">
         <button
           className="btn btn-primary"
-          style={{ padding: '12px 36px', borderRadius: 24, fontSize: '1rem', fontWeight: 700 }}
+          className="px-8 py-3 rounded-full text-base font-bold"
           onClick={onNext}
           disabled={!selected}
         >

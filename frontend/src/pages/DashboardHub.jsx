@@ -1,120 +1,147 @@
 import React from 'react';
 import { useUser } from '../context/UserContext';
-import { FileText, FileSearch, Briefcase, ArrowRight } from 'lucide-react';
+import { FileText, Briefcase, ArrowRight, Sparkles, TrendingUp, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+const features = [
+  {
+    id: 'resumes',
+    title: 'ATS Resume Scanner',
+    desc: 'AI reads every line of your resume — scores it, finds gaps, and gives you interview-ready tips to stand out.',
+    icon: ShieldCheck,
+    gradient: 'from-blue-500 to-indigo-600',
+    badge: 'Most Popular',
+    badgeColor: 'badge-primary',
+    stat: '10–30s scan',
+  },
+  {
+    id: 'builder',
+    title: 'AI Resume Builder',
+    desc: 'Create stunning, ATS-friendly resumes using professional templates with AI-powered bullet rewrites.',
+    icon: FileText,
+    gradient: 'from-violet-500 to-purple-600',
+    stat: '12+ templates',
+  },
+  {
+    id: 'matching',
+    title: 'Job Matching',
+    desc: 'Discover the best-fit roles from LinkedIn & Naukri that match your skills and experience level.',
+    icon: Briefcase,
+    gradient: 'from-emerald-500 to-teal-600',
+    badge: 'New',
+    badgeColor: 'badge-success',
+    stat: 'Real openings',
+  },
+];
+
+const stats = [
+  { label: 'Avg Scan Time',     value: '~20s', icon: TrendingUp,  color: 'text-blue-500' },
+  { label: 'Resume Templates',  value: '12+',  icon: FileText,    color: 'text-emerald-500' },
+  { label: 'Checks Per Resume', value: '50+',  icon: ShieldCheck, color: 'text-amber-500' },
+];
+
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+const item = {
+  hidden: { opacity: 0, y: 16 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
+};
 
 export default function DashboardHub({ setActiveTab }) {
   const { profile } = useUser();
-  
-  const userName = profile?.full_name ? profile.full_name.split(' ')[0] : 'Alex';
-
-  const features = [
-    {
-      id: 'resumes',
-      title: 'Resume Scanner',
-      desc: 'Analyze and optimize your resume against job descriptions using NLP.',
-      icon: <FileSearch size={32} color="#fff" />,
-      color: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-      badge: 'Most Popular'
-    },
-    {
-      id: 'builder',
-      title: 'AI Resume Builder',
-      desc: 'Create beautiful, ATS-friendly resumes with AI tone adjustments.',
-      icon: <FileText size={32} color="#fff" />,
-      color: 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
-    },
-    {
-      id: 'matching',
-      title: 'Job Matching',
-      desc: 'Find the best roles that match your newly generated resume.',
-      icon: <Briefcase size={32} color="#fff" />,
-      color: 'linear-gradient(135deg, #10b981, #059669)',
-      badge: 'New'
-    }
-  ];
+  const firstName = profile?.full_name?.split(' ')[0] || 'there';
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
-      className="dashboard-hub"
-    >
-      <div style={{ marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: 'var(--text-main)' }}>
-          Welcome back, <span style={{ color: 'var(--primary)' }}>{userName}</span>
-        </h1>
-        <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>
-          Optimize your career profile and land your dream job faster.
-        </p>
-      </div>
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
 
-      <div className="grid-2" style={{ gap: '2rem' }}>
-        {features.map((feat) => (
-          <div 
-            key={feat.id}
-            className="card interactive-card"
-            style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              justifyContent: 'space-between',
-              minHeight: '200px',
-              cursor: 'pointer',
-              position: 'relative',
-              overflow: 'hidden',
-              border: '1px solid var(--border-color)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
-            }}
-            onClick={() => setActiveTab(feat.id)}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+      {/* Hero greeting */}
+      <motion.div variants={item} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 via-primary-500 to-violet-500 p-6 md:p-8 text-white shadow-glow">
+        {/* Decorative blobs */}
+        <div className="pointer-events-none absolute -top-8 -right-8 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-8 -left-4 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative">
+          <p className="text-sm font-medium text-white/70 mb-1">👋 Good to see you back</p>
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">
+            Welcome back, <span className="text-yellow-300">{firstName}</span>!
+          </h1>
+          <p className="text-sm md:text-base text-white/80 max-w-md">
+            Optimize your career profile and land your dream job faster with AI-powered analysis.
+          </p>
+          <button
+            className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 border border-white/30 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-all"
+            onClick={() => setActiveTab('resumes')}
           >
-            {feat.badge && (
-              <span className="badge" style={{ 
-                position: 'absolute', 
-                top: '1rem', 
-                right: '1rem', 
-                backgroundColor: feat.badge === 'New' ? '#10b981' : '#3b82f6',
-                color: 'white',
-                border: 'none'
-              }}>
-                {feat.badge}
-              </span>
-            )}
-            
-            <div>
-              <div style={{ 
-                width: '64px', 
-                height: '64px', 
-                borderRadius: '16px', 
-                background: feat.color,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '1.5rem',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-              }}>
-                {feat.icon}
-              </div>
-              <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{feat.title}</h2>
-              <p style={{ color: 'var(--text-muted)', lineHeight: 1.5 }}>{feat.desc}</p>
-            </div>
+            <ShieldCheck size={16} /> Scan Your Resume <ArrowRight size={16} />
+          </button>
+        </div>
+      </motion.div>
 
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              color: 'var(--primary)', 
-              fontWeight: 600,
-              marginTop: '1.5rem'
-            }}>
-              Explore Tool <ArrowRight size={18} />
+      {/* Stats row */}
+      <motion.div variants={item} className="grid grid-cols-3 gap-3 md:gap-4">
+        {stats.map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className="card flex flex-col items-center text-center p-4 dark:bg-surface-800">
+            <div className={`mb-2 ${color}`}>
+              <Icon size={22} />
             </div>
+            <p className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{label}</p>
           </div>
         ))}
+      </motion.div>
+
+      {/* Feature cards */}
+      <div>
+        <motion.p variants={item} className="section-label mb-4">Tools</motion.p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feat) => {
+            const Icon = feat.icon;
+            return (
+              <motion.div
+                key={feat.id}
+                variants={item}
+                whileHover={{ y: -4 }}
+                className="card group relative cursor-pointer overflow-hidden border-slate-200 dark:border-slate-700/60 dark:bg-surface-800 transition-all hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-700"
+                onClick={() => setActiveTab(feat.id)}
+              >
+                {feat.badge && (
+                  <span className={`badge ${feat.badgeColor} absolute top-4 right-4 text-[10px]`}>
+                    {feat.badge}
+                  </span>
+                )}
+
+                {/* Icon */}
+                <div className={`mb-4 h-12 w-12 rounded-2xl bg-gradient-to-br ${feat.gradient} flex items-center justify-center shadow-md`}>
+                  <Icon size={24} color="white" />
+                </div>
+
+                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1.5">{feat.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">{feat.desc}</p>
+
+                <div className="flex items-center justify-between mt-auto">
+                  <span className="text-xs font-medium text-slate-400 dark:text-slate-500">{feat.stat}</span>
+                  <span className="flex items-center gap-1 text-sm font-semibold text-primary dark:text-primary-400 group-hover:gap-2 transition-all">
+                    Open <ArrowRight size={15} />
+                  </span>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Quick tips banner */}
+      <motion.div variants={item} className="rounded-2xl border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/10 p-4 flex items-start gap-3">
+        <Sparkles size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">💡 Pro Tip</p>
+          <p className="text-sm text-amber-700 dark:text-amber-500 mt-0.5">
+            Upload your resume to the ATS Scanner first — the AI will detect your skills and automatically pre-fill the Job Matching tool for you.
+          </p>
+        </div>
+      </motion.div>
+
     </motion.div>
   );
 }

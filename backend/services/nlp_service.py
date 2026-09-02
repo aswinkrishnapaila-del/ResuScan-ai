@@ -3,89 +3,200 @@ import json
 import re
 import os
 import logging
-import itertools
+import requests
 from typing import List, Dict, Any
 
 from PyPDF2 import PdfReader
 from docx import Document
-from google import genai
 from dotenv import load_dotenv
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# SpaCy loader removed as it is not utilized in business logic.
-
-# ── Dual Gemini API Key Pool with fallback ──────────────────────────────────
 load_dotenv()
 
-_API_KEYS = [
-    k for k in [
-        os.environ.get("GEMINI_API_KEY", "AIzaSyA4NgqknyOhY2cOleKfYXGDW_ScZFE5nyM"),
-        os.environ.get("GEMINI_API_KEY_2", "AIzaSyBx8fGTiEZ2CQfqbZJeGOEISeCHHtJ9BBQ"),
-    ] if k
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
+
+# Model priority list — ordered by JSON reliability
+# openai/gpt-oss-120b is the most reliable for structured JSON output
+MODEL_PRIORITY = [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "groq/compound",
+    "qwen/qwen3.6-27b",   # Last resort — emits <think> blocks
 ]
 
-_suspended_keys: set = set()
-_key_cycle = itertools.cycle(_API_KEYS)
-_clients: Dict[str, Any] = {}
+# ─── Skill Taxonomy ──────────────────────────────────────────────────────────
+SKILL_TAXONOMY = [
+    # Languages
+    "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Go", "Rust",
+    "PHP", "Ruby", "SQL", "HTML", "CSS", "Bash", "PowerShell", "Kotlin", "Swift",
+    # Frontend
+    "React", "Next.js", "Vue", "Angular", "Tailwind CSS", "Redux", "GraphQL",
+    "Bootstrap", "Webpack", "Vite", "Figma", "UI/UX", "SASS", "Framer Motion",
+    # Backend & API
+    "FastAPI", "Flask", "Django", "Node.js", "Express", "Spring Boot",
+    "REST API", "Microservices", "gRPC", "WebSockets",
+    # Databases
+    "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "Cassandra",
+    "SQLite", "Firebase", "Supabase", "DynamoDB", "Prisma", "SQLAlchemy",
+    # DevOps & Cloud
+    "Docker", "Kubernetes", "CI/CD", "AWS", "Azure", "GCP", "Terraform",
+    "Jenkins", "Git", "GitHub", "GitLab", "Linux", "Nginx", "Ansible", "Helm",
+    # AI & ML
+    "Machine Learning", "Deep Learning", "NLP", "TensorFlow", "PyTorch",
+    "Scikit-Learn", "OpenCV", "Pandas", "NumPy", "LangChain", "Hugging Face",
+    # Methodology & Soft
+    "Agile", "Scrum", "Kanban", "TDD", "BDD", "SOLID", "Design Patterns",
+    "System Design", "Data Structures", "Algorithms",
+]
 
-PRIMARY_MODEL = "gemini-2.5-flash"
-FALLBACK_MODEL = "gemini-2.0-flash"
-MODEL = PRIMARY_MODEL
+STRONG_ACTION_VERBS = [
+    "Led", "Architected", "Optimized", "Engineered", "Developed", "Deployed",
+    "Designed", "Automated", "Built", "Implemented", "Delivered", "Directed",
+    "Created", "Spearheaded", "Accelerated", "Scaled", "Orchestrated",
+    "Transformed", "Established", "Pioneered", "Revamped", "Streamlined",
+    "Launched", "Reduced", "Increased", "Improved", "Managed", "Mentored",
+]
+
+WEAK_PASSIVE_PHRASES = [
+    "responsible for", "helped with", "helped", "worked on", "assisted with",
+    "assisted", "was part of", "handled", "involved in", "tasks included",
+    "participated in", "contributed to", "tried to", "attempted to",
+]
+
+STANDARD_SECTIONS = ["experience", "education", "skills", "projects"]
 
 
-def _get_active_keys():
-    return [k for k in _API_KEYS if k not in _suspended_keys]
+# ─── Groq API Client ─────────────────────────────────────────────────────────
+def _call_groq(
+    prompt: str,
+    system_prompt: str = "You are an expert ATS resume reviewer and senior technical recruiter with 20+ years at FAANG. Be brutally honest, specific, and evidence-based.",
+    expect_json: bool = False,
+) -> str:
+    """
+    Call Groq API with automatic model fallback.
+    - If expect_json=True, instructs the model to output only JSON and
+      validates that the cleaned content is non-empty.
+    - Skips models whose response is empty after stripping think-blocks.
+    """
+    if not GROQ_API_KEY:
+        raise RuntimeError("GROQ_API_KEY is not configured.")
 
-
-def get_client() -> Any:
-    """Returns a Gemini client, skipping suspended keys."""
-    active = _get_active_keys()
-    if not active:
-        # All keys suspended — try anyway with last known key
-        active = _API_KEYS
-    key = active[hash(str(os.getpid())) % len(active)]
-    if key not in _clients:
-        _clients[key] = genai.Client(api_key=key)
-        logger.info(f"Gemini client initialised with key ending ...{key[-6:]}")
-    return _clients[key]
-
-
-def _call_gemini(prompt: str) -> str:
-    """Call Gemini with automatic key/model fallback on errors."""
-    import time
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
     errors = []
-    models_to_try = [PRIMARY_MODEL, FALLBACK_MODEL, "gemini-2.0-flash-lite"]
-    keys_to_try = _get_active_keys() or _API_KEYS
 
-    for model in models_to_try:
-        for key in keys_to_try:
-            if key in _suspended_keys:
-                continue
-            try:
-                if key not in _clients:
-                    _clients[key] = genai.Client(api_key=key)
-                client = _clients[key]
-                resp = client.models.generate_content(model=model, contents=prompt)
-                return resp.text
-            except Exception as e:
-                err_str = str(e)
-                if 'PERMISSION_DENIED' in err_str or 'CONSUMER_SUSPENDED' in err_str:
-                    logger.warning(f"Key ...{key[-6:]} is suspended — marking as inactive.")
-                    _suspended_keys.add(key)
-                elif '429' in err_str or 'RESOURCE_EXHAUSTED' in err_str:
-                    logger.warning(f"Key ...{key[-6:]} quota exceeded for {model}, trying next.")
-                    # Wait briefly and try fallback model
-                    time.sleep(1)
-                else:
-                    logger.error(f"Gemini error (key ...{key[-6:]}, model {model}): {e}")
-                errors.append(str(e))
+    for model in MODEL_PRIORITY:
+        # Build payload — disable thinking for qwen models to prevent empty JSON
+        payload: dict = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.25,
+            "max_tokens": 2048,
+        }
+        # Force JSON mode where the API supports it
+        if expect_json:
+            payload["response_format"] = {"type": "json_object"}
+        # Disable extended thinking for qwen to prevent think-only responses
+        if "qwen" in model:
+            payload["chat_template_kwargs"] = {"thinking": False}
 
-    raise RuntimeError(f"All Gemini API keys/models failed: {errors}")
+        try:
+            res = requests.post(GROQ_ENDPOINT, headers=headers, json=payload, timeout=30)
+            if res.status_code == 200:
+                raw_content = res.json()["choices"][0]["message"]["content"]
+                content = raw_content.strip() if raw_content else ""
+                logger.info(f"[Groq] model={model} raw_len={len(content)}")
 
-# ── File Extraction ──────────────────────────────────────────────────────────
+                # Validate — skip models that return only a think block and nothing else
+                if expect_json:
+                    cleaned = _clean_json(content)
+                    if not cleaned or cleaned in ('{}', '[]', ''):
+                        logger.warning(f"[Groq] model={model} returned empty JSON after cleaning, skipping")
+                        errors.append(f"{model}: empty JSON after clean")
+                        continue
+
+                return content
+            elif res.status_code == 400 and "response_format" in str(res.text):
+                # Model doesn't support json_object — retry without it
+                payload.pop("response_format", None)
+                res2 = requests.post(GROQ_ENDPOINT, headers=headers, json=payload, timeout=30)
+                if res2.status_code == 200:
+                    content = (res2.json()["choices"][0]["message"]["content"] or "").strip()
+                    logger.info(f"[Groq] model={model} (no json_mode) raw_len={len(content)}")
+                    return content
+                errors.append(f"{model}: HTTP {res2.status_code}")
+            else:
+                logger.warning(f"[Groq] HTTP {res.status_code} model={model}: {res.text[:200]}")
+                errors.append(f"{model}: HTTP {res.status_code}")
+        except Exception as e:
+            logger.error(f"[Groq] Exception model={model}: {e}")
+            errors.append(f"{model}: {str(e)}")
+
+    raise RuntimeError(f"All Groq models failed: {errors}")
+
+
+def _clean_json(text: str) -> str:
+    """
+    Robustly extract a JSON object from LLM output.
+    Handles: <think> blocks, markdown fences, preamble text.
+    Falls back to brace-matching extraction as a final safety net.
+    """
+    # 1. Strip <think>...</think> reasoning blocks (qwen, o1-style)
+    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+
+    # 2. Strip markdown code fences
+    text = re.sub(r'^```(?:json)?\s*', '', text, flags=re.MULTILINE)
+    text = re.sub(r'\s*```$', '', text, flags=re.MULTILINE)
+    text = text.strip()
+
+    # 3. If the text starts with valid JSON, return it directly
+    if text.startswith('{') or text.startswith('['):
+        return text
+
+    # 4. Brace-match extraction — find first { ... } at top level
+    start = text.find('{')
+    if start == -1:
+        return text  # Nothing to extract; let json.loads raise the error
+
+    depth = 0
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text[start:], start):
+        if escape:
+            escape = False
+            continue
+        if ch == '\\' and in_string:
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+
+    # Fallback: return everything from first brace
+    return text[start:]
+
+
+# ─── Text Extraction ─────────────────────────────────────────────────────────
 def extract_text_from_pdf(file_bytes: bytes) -> str:
+    """Extract text from PDF with PyPDF2 and pypdf fallback, handles multi-column."""
     text = ""
     try:
         reader = PdfReader(io.BytesIO(file_bytes))
@@ -97,8 +208,7 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
             except Exception:
                 pass
     except Exception as e:
-        logger.warning(f"PyPDF2 failed: {e}, trying pypdf fallback...")
-        # Try pypdf as fallback
+        logger.warning(f"PyPDF2 failed: {e}. Trying pypdf fallback...")
         try:
             import pypdf
             reader2 = pypdf.PdfReader(io.BytesIO(file_bytes))
@@ -109,434 +219,412 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
                         text += extracted + "\n"
                 except Exception:
                     pass
-        except ImportError:
-            pass
         except Exception as e2:
-            raise ValueError(f"Failed to open PDF: {e2}")
+            raise ValueError(f"Failed to extract text from PDF: {e2}")
 
-    if not text.strip():
+    # Normalize whitespace — fixes multi-column broken words
+    text = re.sub(r'[ \t]{2,}', ' ', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+
+    if not text.strip() or len(text.strip()) < 30:
         raise ValueError(
             "Could not extract text from this PDF. "
-            "The file may be image-based or scanned. "
+            "It may be image-based or scanned. "
             "Please upload a PDF with selectable text, or a DOCX file."
         )
     return text.strip()
 
 
 def extract_text_from_docx(file_bytes: bytes) -> str:
+    """Extract text from DOCX — paragraphs + table cells."""
     try:
         doc = Document(io.BytesIO(file_bytes))
-        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+        parts = [p.text for p in doc.paragraphs if p.text.strip()]
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     if cell.text.strip():
-                        paragraphs.append(cell.text.strip())
-        return "\n".join(paragraphs).strip()
+                        parts.append(cell.text.strip())
+        full_text = "\n".join(parts).strip()
+        full_text = re.sub(r'[ \t]{2,}', ' ', full_text)
+        full_text = re.sub(r'\n{3,}', '\n\n', full_text)
+        if not full_text:
+            raise ValueError("DOCX file appears to be empty.")
+        return full_text
     except Exception as e:
         raise ValueError(f"Failed to read DOCX: {str(e)}")
 
 
-def _clean_json(text: str) -> str:
-    text = text.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    elif text.startswith("```"):
-        text = text[3:]
-    if text.endswith("```"):
-        text = text[:-3]
-    return text.strip()
+# ─── Local Analysis Helpers ───────────────────────────────────────────────────
+def _extract_skills_local(text: str) -> List[str]:
+    """Extract skills from resume text using the taxonomy."""
+    text_lower = text.lower()
+    found = []
+    for skill in SKILL_TAXONOMY:
+        if skill.lower() in text_lower:
+            found.append(skill)
+    return found
 
 
-# ── Resume Analyzer ──────────────────────────────────────────────────────────
-def analyze_resume_with_gemini(resume_text: str) -> Dict[str, Any]:
-    if not resume_text or len(resume_text.strip()) < 50:
-        return _default_error_response("Resume text is too short or could not be extracted.")
+def _check_sections(text: str) -> Dict[str, bool]:
+    text_lower = text.lower()
+    return {sec: (sec in text_lower) for sec in STANDARD_SECTIONS}
 
-    prompt = f"""You are an elite ATS expert and senior technical recruiter with 20+ years of experience at FAANG companies.
 
-TASK: Perform a brutally honest, evidence-based audit of the resume below. Every single finding MUST directly quote or reference actual text from the resume — never make assumptions or generic statements.
+def _check_metrics(text: str) -> bool:
+    """True if resume contains quantified achievements."""
+    return bool(re.search(
+        r'\d+\s*%|\$\s*\d+|\d+\s*x\b|\b\d+\+?\s*(users|clients|engineers|projects|million|k|m|billion|features|services|apis|servers|years)',
+        text, re.IGNORECASE
+    ))
 
-RESUME TEXT:
----
-{resume_text[:14000]}
----
 
-AUDIT DIMENSIONS (check each one rigorously):
-1. Contact & Identity: Full name, email, phone, LinkedIn URL, GitHub, location — quote what's missing
-2. Professional Summary: Is there one? Does it have keywords? Quote it or note its absence
-3. Work Experience Quality: Are bullets action-verb-first? Do they have numbers/metrics? Quote weak bullets
-4. Skills Section: Are skills listed? Are they relevant to the apparent target role? List what you find
-5. Education: Degree, institution, year — quote what's present or missing
-6. ATS Keyword Density: Are industry-relevant keywords present? Name them
-7. Length & Formatting: Appropriate for experience level?
+def _find_weak_verbs(text: str) -> List[str]:
+    text_lower = text.lower()
+    return [p for p in WEAK_PASSIVE_PHRASES if p in text_lower]
 
-SCORING (be strict — most resumes score 40-75, not 85+):
-- Formatting & Readability (0-20): Contact completeness, section headers, consistency
-- Skill Alignment (0-30): Relevance and depth of skills to apparent target role
-- Impact & Metrics (0-30): Quantified achievements, strong action verbs (most people lose points here)
-- Education & Credentials (0-20): Degree relevance, GPA if present, certifications
 
-GRADE: A=90-100, B=75-89, C=55-74, D=40-54, F=0-39
+def _ats_score_local(text: str) -> int:
+    """Compute a local heuristic ATS score (0-100)."""
+    score = 45
+    sections = _check_sections(text)
+    for present in sections.values():
+        if present:
+            score += 7
 
-Return ONLY this JSON (no markdown, no explanation):
+    has_email = bool(re.search(r'[\w.+-]+@[\w-]+\.\w+', text))
+    has_phone = bool(re.search(r'\+?\d[\d\s\-(). ]{7,}', text))
+    has_metrics = _check_metrics(text)
+    weak_verbs = _find_weak_verbs(text)
+    skills_count = len(_extract_skills_local(text))
+    word_count = len(text.split())
+
+    if has_email:   score += 5
+    if has_phone:   score += 3
+    if has_metrics: score += 12
+    score += min(15, skills_count * 2)
+    if weak_verbs:  score -= len(weak_verbs) * 2
+    if word_count < 200: score -= 15
+    elif word_count > 900: score -= 5
+
+    return max(20, min(95, score))
+
+
+# ─── Core AI Resume Scan ──────────────────────────────────────────────────────
+def scan_resume_with_ai(resume_text: str, filename: str = "resume") -> Dict[str, Any]:
+    """
+    Master function: sends resume to Groq for deep AI analysis.
+    Returns structured JSON with ATS score, skills, missing skills,
+    improvements, interview tips, and verdict.
+    """
+    # Pre-compute local signals to augment the prompt
+    local_skills = _extract_skills_local(resume_text)
+    has_metrics  = _check_metrics(resume_text)
+    weak_verbs   = _find_weak_verbs(resume_text)
+    sections     = _check_sections(resume_text)
+    local_score  = _ats_score_local(resume_text)
+
+    prompt = f"""You are a brutally honest senior technical recruiter and ATS expert with 20+ years at Google, Meta, and Amazon.
+
+Your task is to perform a DEEP, EVIDENCE-BASED audit of the resume below. Reference actual content — job titles, company names, project names, and exact bullet points. Never invent or hallucinate.
+
+=== RESUME TEXT ===
+{resume_text[:9000]}
+=== END RESUME ===
+
+Local pre-analysis signals (use these to calibrate your response):
+- Skills detected: {', '.join(local_skills) if local_skills else 'None found'}
+- Quantified metrics present: {has_metrics}
+- Weak passive phrases found: {weak_verbs if weak_verbs else 'None'}
+- Sections present: {[k for k, v in sections.items() if v]}
+- Sections missing: {[k for k, v in sections.items() if not v]}
+- Local ATS estimate: {local_score}/100
+
+Produce ONLY a valid JSON object with this exact structure — no markdown, no preamble, no explanation outside JSON:
 {{
-  "score": <integer 0-100>,
+  "ats_score": <integer 0-100, strict — most resumes score 45-78, not 85+>,
   "grade": "<A|B|C|D|F>",
+  "verdict": "<1 blunt sentence summarising the resume — name the actual candidate role/field>",
   "score_breakdown": {{
     "formatting": <0-20>,
     "skills": <0-30>,
-    "experience": <0-30>,
+    "impact": <0-30>,
     "education": <0-20>
   }},
-  "reasoning": "<2-3 blunt sentences referencing ACTUAL content — name the candidate's actual job titles, companies, or skills you found>",
+  "strong_skills": ["<skill actually found in resume>", "..."],
+  "critical_missing_skills": ["<important tech/tool absent from resume but expected for this role>", "..."],
+  "improvements": [
+    "<specific actionable improvement with before/after example quoting ACTUAL resume text>",
+    "<second improvement>",
+    "<third improvement>",
+    "<fourth improvement>"
+  ],
+  "interview_tips": [
+    "<specific tip for standing out in interview for this candidate's background — NOT generic>",
+    "<second tip — reference a project or skill from the resume>",
+    "<third tip — behavioural/technical prep tailored to their role>",
+    "<fourth tip — how to answer 'why should we hire you' for this specific profile>"
+  ],
   "errors": [
     {{
-      "category": "<missing_section|weak_language|no_metrics|formatting|grammar|contact_info|too_short|cliches>",
+      "category": "<missing_section|weak_language|no_metrics|formatting|contact_info|too_short|cliches>",
       "severity": "<high|medium|low>",
-      "message": "<Quote the specific text or absence — e.g., 'Bullet reads: responsible for managing team — replace with Led a team of X engineers to achieve Y result'>"
+      "message": "<quote the ACTUAL problematic text or name the exact missing thing>"
     }}
   ],
-  "improvements_needed": [
-    "<Actionable improvement with a before/after example where possible>",
-    "<Second improvement>",
-    "<Third improvement>"
-  ],
-  "skills_found": ["<every technical/soft skill explicitly mentioned in the resume>"],
-  "experience": <total estimated years of work experience as integer>
-}}"""
-
-    try:
-        raw = _call_gemini(prompt)
-        data = json.loads(_clean_json(raw))
-        required = ["score", "grade", "score_breakdown", "errors", "improvements_needed", "skills_found"]
-        for key in required:
-            if key not in data:
-                raise ValueError(f"Missing key: {key}")
-        data["experience"] = int(data.get("experience", 0) or 0)
-        return data
-    except Exception as e:
-        logger.error(f"[Resume Analyzer] {e}")
-        return _fallback_analysis(resume_text)
-
-
-def _default_error_response(reason: str) -> Dict[str, Any]:
-    return {
-        "score": 0, "grade": "F",
-        "score_breakdown": {"formatting": 0, "skills": 0, "experience": 0, "education": 0},
-        "reasoning": reason,
-        "errors": [{"category": "missing_section", "severity": "high", "message": reason}],
-        "improvements_needed": ["Upload a clear PDF or Word document with selectable text."],
-        "skills_found": [], "experience": 0
-    }
-
-
-def _fallback_analysis(resume_text: str) -> Dict[str, Any]:
-    text_lower = resume_text.lower()
-    word_count = len(resume_text.split())
-    errors = []
-    score = 60
-
-    has_contact = bool(re.search(r'[\w.+-]+@[\w-]+\.\w+', resume_text))
-    has_phone = bool(re.search(r'\+?\d[\d\s\-(). ]{7,}', resume_text))
-    has_summary = any(kw in text_lower for kw in ['summary', 'objective', 'profile', 'about'])
-    has_skills = 'skills' in text_lower
-    has_education = any(kw in text_lower for kw in ['education', 'university', 'college', 'degree', 'bachelor', 'master'])
-    has_experience = any(kw in text_lower for kw in ['experience', 'work', 'employment', 'position'])
-    has_metrics = bool(re.search(r'\d+%|\$\d+|\d+\+\s*(years|clients|users|projects)', resume_text, re.IGNORECASE))
-    weak_verbs = ['responsible for', 'helped', 'assisted', 'worked on', 'was part of']
-    found_weak = [v for v in weak_verbs if v in text_lower]
-
-    if not has_contact: errors.append({"category": "contact_info", "severity": "high", "message": "No email address detected."}); score -= 10
-    if not has_phone: errors.append({"category": "contact_info", "severity": "medium", "message": "No phone number detected."}); score -= 5
-    if not has_summary: errors.append({"category": "missing_section", "severity": "high", "message": "No Professional Summary section found."}); score -= 8
-    if not has_skills: errors.append({"category": "missing_section", "severity": "high", "message": "No Skills section found."}); score -= 8
-    if not has_education: errors.append({"category": "missing_section", "severity": "medium", "message": "Education section missing or not clearly labeled."}); score -= 5
-    if not has_experience: errors.append({"category": "missing_section", "severity": "high", "message": "Work Experience section missing or not clearly labeled."}); score -= 10
-    if not has_metrics: errors.append({"category": "no_metrics", "severity": "high", "message": "No quantifiable achievements found (e.g., 'increased sales by 30%')."}); score -= 8
-    if found_weak: errors.append({"category": "weak_language", "severity": "medium", "message": f"Weak language: '{found_weak[0]}'. Use strong action verbs instead."}); score -= 5
-    if word_count < 250: errors.append({"category": "too_short", "severity": "high", "message": f"Resume is ~{word_count} words — too brief. Aim for 400-600 words."}); score -= 10
-
-    score = max(30, min(score, 90))
-    skills = _extract_skills(resume_text)
-    fmt = 15 if (has_contact and has_summary) else 8
-    sk = min(30, len(skills) * 3)
-    ex = 20 if has_metrics else 12
-    edu = 15 if has_education else 5
-    grade_score = fmt + sk + ex + edu
-    grade = "A" if grade_score >= 90 else "B" if grade_score >= 75 else "C" if grade_score >= 55 else "D" if grade_score >= 40 else "F"
-    exp_match = re.search(r'(\d+)\+?\s*(years|yrs)', resume_text, re.IGNORECASE)
-
-    return {
-        "score": score, "grade": grade,
-        "score_breakdown": {"formatting": fmt, "skills": sk, "experience": ex, "education": edu},
-        "reasoning": "Automated local analysis (AI unavailable). Review errors below for specific improvements.",
-        "errors": errors,
-        "improvements_needed": [
-            "Add quantifiable achievements (numbers, %, dollar amounts) to every experience bullet.",
-            "Include a strong professional summary at the top.",
-            "Ensure all sections (Contact, Summary, Skills, Experience, Education) are clearly labeled.",
-        ],
-        "skills_found": skills[:10],
-        "experience": int(exp_match.group(1)) if exp_match else 1
-    }
-
-
-# ── Job Description Analyzer ─────────────────────────────────────────────────
-def analyze_jd_with_gemini(jd_text: str) -> Dict[str, Any]:
-    prompt = f"""You are a senior technical recruiter and career coach at a top-tier company.
-
-TASK: Carefully READ the job description below word-by-word and extract precise, specific information. Do NOT give generic advice — every response must reference what the JD ACTUALLY SAYS.
-
-JOB DESCRIPTION:
----
-{jd_text[:6000]}
----
-
-Extract and return ONLY this JSON (no markdown, no extra text):
-{{
-  "role_title": "<exact job title as stated in the JD — copy it verbatim>",
-  "key_skills_required": [
-    "<skill explicitly named in the JD>",
-    "<another skill from the JD>",
-    "<list every technology, tool, language, framework mentioned>"
-  ],
-  "experience_level": "<Junior|Mid-Level|Senior|Lead — based on years and responsibilities stated in JD>",
-  "suggestions": [
-    "<Specific actionable advice referencing THIS JD — e.g., 'The JD requires Kubernetes experience — add any K8s project to your resume'>",
-    "<Another suggestion tied to a requirement IN this JD>",
-    "<Third suggestion — e.g., 'JD emphasizes CI/CD — quantify any pipeline work you've done'>"
-  ],
-  "how_to_start": [
-    "<Step 1 — specific to this role's requirements>",
-    "<Step 2>",
-    "<Step 3>",
-    "<Step 4>"
-  ],
-  "skills_to_learn": [
-    "<skill FROM the JD that a candidate might be missing>",
-    "<another skill from JD>"
-  ],
-  "certifications": [
-    {{"name": "<certification directly matching JD tech stack>", "url": "<real Coursera/AWS/Google/Microsoft certification URL>"}},
-    {{"name": "<second cert matching JD requirements>", "url": "<real URL>"}}
-  ],
-  "similar_jobs": [
-    {{"title": "<job title from this JD>", "company": "Various", "url": "https://www.linkedin.com/jobs/search/?keywords=<URL-encoded-title-from-JD>&location=India"}},
-    {{"title": "<related role based on JD skills>", "company": "Various", "url": "https://www.naukri.com/<hyphenated-title>-jobs"}},
-    {{"title": "<another related role>", "company": "Various", "url": "https://www.linkedin.com/jobs/search/?keywords=<URL-encoded-related-title>&location=India"}}
-  ]
+  "experience_years": <integer estimate of total work experience>,
+  "parsed_skills": ["<every skill/technology you actually found in the resume>"]
 }}
 
-RULES:
-- key_skills_required: copy skill names VERBATIM from the JD — do not paraphrase
-- certifications: must match the actual tech stack in THIS JD (e.g., if JD says AWS → AWS cert, if JD says Python → Python Institute cert)
-- similar_jobs URLs: encode the actual role title from this JD in the URL
-- Return ONLY the JSON. No preamble, no explanation."""
+STRICT RULES:
+- ats_score: deduct heavily for missing metrics, weak verbs, no quantified impact
+- strong_skills: only list skills you can SEE in the resume text
+- critical_missing_skills: list 4-6 skills typically expected for this type of role that are NOT in the resume
+- improvements: be specific, quote real text, give concrete before/after examples
+- interview_tips: tailored to THIS candidate — mention their actual projects, companies, or tech stack
+- errors: only real errors found — do not fabricate
+- Return ONLY valid JSON. No other text."""
 
     try:
-        raw = _call_gemini(prompt)
-        data = json.loads(_clean_json(raw))
-        return data
-    except Exception as e:
-        logger.error(f"[JD Analyzer] {e}")
-        # Encode the JD title for URL use
-        from urllib.parse import quote_plus
-        safe_title = quote_plus("Software Engineer")
+        raw = _call_groq(prompt, expect_json=True)
+        cleaned = _clean_json(raw)
+        data = json.loads(cleaned)
+
+        # Validate and sanitize required keys
+        score = int(data.get("ats_score", local_score))
+        grade_val = data.get("grade", "C")
+        if grade_val not in ["A", "B", "C", "D", "F"]:
+            grade_val = "A" if score >= 90 else "B" if score >= 75 else "C" if score >= 55 else "D" if score >= 40 else "F"
+
         return {
-            "role_title": "Role not detected — AI temporarily unavailable",
-            "key_skills_required": ["Check JD manually"],
-            "experience_level": "Not specified",
-            "suggestions": [
-                "Tailor your resume summary to match the exact role keywords.",
-                "Highlight projects demonstrating skills mentioned in the JD.",
-                "Quantify your past impact with numbers and percentages.",
-            ],
-            "how_to_start": [
-                "Identify the 5 core skills required in this JD.",
-                "Build a small demo project using those skills.",
-                "Add the project to GitHub and link it in your resume.",
-                "Apply to at least 5 similar roles on LinkedIn immediately.",
-            ],
-            "skills_to_learn": ["Review JD requirements manually"],
-            "certifications": [
-                {"name": "Google IT Support Certificate", "url": "https://www.coursera.org/professional-certificates/google-it-support"},
-                {"name": "AWS Cloud Practitioner", "url": "https://aws.amazon.com/certification/certified-cloud-practitioner/"},
-            ],
-            "similar_jobs": [
-                {"title": "Software Engineer", "company": "Various", "url": f"https://www.linkedin.com/jobs/search/?keywords={safe_title}&location=India"},
-                {"title": "Full Stack Developer", "company": "Various", "url": "https://www.naukri.com/full-stack-developer-jobs"},
-                {"title": "Backend Developer", "company": "Various", "url": "https://www.linkedin.com/jobs/search/?keywords=Backend+Developer&location=India"},
-            ]
+            "filename": filename,
+            "ats_score": score,
+            "grade": grade_val,
+            "verdict": str(data.get("verdict", "Resume analyzed successfully.")),
+            "score_breakdown": {
+                "formatting": int(data.get("score_breakdown", {}).get("formatting", 12)),
+                "skills":     int(data.get("score_breakdown", {}).get("skills", 15)),
+                "impact":     int(data.get("score_breakdown", {}).get("impact", 14)),
+                "education":  int(data.get("score_breakdown", {}).get("education", 12)),
+            },
+            "strong_skills":          list(data.get("strong_skills", local_skills[:8])),
+            "critical_missing_skills": list(data.get("critical_missing_skills", [])),
+            "improvements":           list(data.get("improvements", [])),
+            "interview_tips":         list(data.get("interview_tips", [])),
+            "errors":                 list(data.get("errors", [])),
+            "experience_years":       int(data.get("experience_years", 0) or 0),
+            "parsed_skills":          list(data.get("parsed_skills", local_skills)),
+            "parsed_text":            resume_text[:1500],
         }
 
+    except Exception as e:
+        logger.error(f"[scan_resume_with_ai] AI call failed: {e}. Using local fallback.")
+        return _local_fallback_scan(resume_text, filename, local_skills, local_score,
+                                     has_metrics, weak_verbs, sections)
 
-# ── Skills Extractor ─────────────────────────────────────────────────────────
-def _extract_skills(text: str) -> List[str]:
-    common_skills = [
-        'Python', 'Java', 'JavaScript', 'TypeScript', 'React', 'Node.js',
-        'HTML', 'CSS', 'SQL', 'NoSQL', 'MongoDB', 'PostgreSQL',
-        'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Git',
-        'FastAPI', 'Flask', 'Django', 'Spring Boot',
-        'Machine Learning', 'Deep Learning', 'NLP', 'TensorFlow', 'PyTorch',
-        'Figma', 'UI/UX', 'Tailwind CSS', 'GraphQL', 'REST API', 'C++', 'C#',
-        'Next.js', 'Vue.js', 'Angular', 'Redis', 'Elasticsearch', 'Kafka',
-        'Linux', 'Bash', 'PowerShell', 'Terraform', 'CI/CD', 'Jenkins',
+
+def _local_fallback_scan(resume_text, filename, skills, score, has_metrics, weak_verbs, sections) -> Dict[str, Any]:
+    """High-quality local fallback when AI is unavailable."""
+    errors = []
+    improvements = []
+    interview_tips = []
+
+    has_email = bool(re.search(r'[\w.+-]+@[\w-]+\.\w+', resume_text))
+    has_phone = bool(re.search(r'\+?\d[\d\s\-(). ]{7,}', resume_text))
+    word_count = len(resume_text.split())
+
+    if not has_email:
+        errors.append({"category": "contact_info", "severity": "high", "message": "No email address found in the resume."})
+    if not has_phone:
+        errors.append({"category": "contact_info", "severity": "medium", "message": "No phone number detected."})
+    for sec in STANDARD_SECTIONS:
+        if not sections.get(sec):
+            errors.append({"category": "missing_section", "severity": "high", "message": f"No '{sec.title()}' section found."})
+    if not has_metrics:
+        errors.append({"category": "no_metrics", "severity": "high", "message": "No quantified achievements found (e.g., 'reduced load time by 40%')."})
+    if weak_verbs:
+        errors.append({"category": "weak_language", "severity": "medium", "message": f"Passive language detected: '{weak_verbs[0]}'. Replace with strong action verbs."})
+    if word_count < 250:
+        errors.append({"category": "too_short", "severity": "high", "message": f"Resume is only ~{word_count} words. Aim for 400-700 words."})
+
+    improvements = [
+        "Start every bullet point with a strong action verb like 'Led', 'Engineered', or 'Deployed'.",
+        "Add quantified results to each bullet: e.g., 'Reduced API response time by 35% through caching layer.'",
+        "Include a concise Professional Summary at the top that names your target role and top 3 skills.",
+        "Add a dedicated Skills section listing all your technical tools, languages, and frameworks.",
     ]
-    found = set()
-    text_lower = text.lower()
-    for s in common_skills:
-        if s.lower() in text_lower:
-            found.add(s)
-    return list(found)
+    interview_tips = [
+        "Prepare a 2-minute STAR story for each project on your resume with measurable outcomes.",
+        "Research the company's tech stack in advance and map your skills to their specific tools.",
+        "When asked 'Tell me about yourself', lead with your strongest skill + a concrete achievement number.",
+        "Prepare questions to ask the interviewer about team structure, tech debt, and growth opportunities.",
+    ]
+
+    missing_skills = [s for s in ["Docker", "Kubernetes", "CI/CD", "Redis", "Terraform", "GraphQL"] if s.lower() not in resume_text.lower()][:5]
+    grade = "A" if score >= 90 else "B" if score >= 75 else "C" if score >= 55 else "D" if score >= 40 else "F"
+
+    return {
+        "filename": filename,
+        "ats_score": score,
+        "grade": grade,
+        "verdict": "Local analysis complete (AI temporarily unavailable). Review the audit findings below.",
+        "score_breakdown": {
+            "formatting": 15 if (has_email and sections.get("skills")) else 8,
+            "skills": min(30, len(skills) * 4),
+            "impact": 20 if has_metrics else 8,
+            "education": 15 if sections.get("education") else 5,
+        },
+        "strong_skills": skills[:10],
+        "critical_missing_skills": missing_skills,
+        "improvements": improvements,
+        "interview_tips": interview_tips,
+        "errors": errors,
+        "experience_years": 0,
+        "parsed_skills": skills,
+        "parsed_text": resume_text[:1500],
+    }
 
 
-# ── Refine Summary ────────────────────────────────────────────────────────────
+# ─── Backward-Compat: /api/analyze-resumes ───────────────────────────────────
+def analyze_resume_with_gemini(resume_text: str) -> Dict[str, Any]:
+    """
+    Adapter for the existing /api/analyze-resumes endpoint.
+    Calls scan_resume_with_ai and maps to the legacy response shape.
+    """
+    result = scan_resume_with_ai(resume_text)
+    score = result["ats_score"]
+    grade = result["grade"]
+    errors = result.get("errors", [])
+
+    # Map improvements to legacy 'improvements_needed'
+    improvements_needed = result.get("improvements", [])
+    if result.get("interview_tips"):
+        improvements_needed += result["interview_tips"]
+
+    return {
+        "score": score,
+        "grade": grade,
+        "score_breakdown": {
+            "formatting": result["score_breakdown"].get("formatting", 12),
+            "skills":     result["score_breakdown"].get("skills", 15),
+            "experience": result["score_breakdown"].get("impact", 14),
+            "education":  result["score_breakdown"].get("education", 12),
+        },
+        "reasoning": result.get("verdict", ""),
+        "errors": errors,
+        "improvements_needed": improvements_needed,
+        "skills_found": result.get("parsed_skills", []),
+        "experience": result.get("experience_years", 0),
+    }
+
+
+# ─── Refine Summary ───────────────────────────────────────────────────────────
 def refine_summary_with_gemini(summary_text: str) -> str:
-    if not summary_text or len(summary_text.strip()) < 5:
-        return summary_text
+    prompt = f"""Rewrite this professional resume summary to be powerful, active-voiced, and senior-level.
+Keep ALL facts and numbers. Start with a strong descriptor. Return ONLY the rewritten text, no labels.
 
-    prompt = f"""You are a world-class resume writer and career coach. Your task is to COMPLETELY REWRITE the professional summary below.
-
-STRICT RULES — follow every one:
-1. Fix ALL spelling and grammar errors.
-2. Start with a strong descriptor or professional title (e.g., "Results-driven Software Engineer..." or "Innovative Data Scientist...").
-3. Use ACTIVE voice and STRONG action verbs throughout (Led, Built, Architected, Delivered, Engineered).
-4. Write 3-5 powerful, detailed sentences — not vague platitudes.
-5. PRESERVE every fact, number, technology name, and specific detail from the original.
-6. Make it sound like a senior professional wrote it.
-7. The rewritten version MUST be meaningfully different from the original.
-8. Return ONLY the rewritten summary as plain text. No quotes, no labels, no markdown, no preamble.
-
-Original summary:
+Original:
 {summary_text}
 
-Rewritten professional summary:"""
-
+Rewritten:"""
     try:
-        result = _call_gemini(prompt).strip().strip('"').strip()
+        result = _call_groq(prompt).strip().strip('"')
         if result.lower().startswith("rewritten"):
             result = result.split("\n", 1)[-1].strip()
-        if result == summary_text.strip():
-            # Force retry with a new call
-            result = _call_gemini(prompt + " (rewrite must differ from original)").strip().strip('"').strip()
-        logger.info(f"[Refine] Input len={len(summary_text)}, Output len={len(result)}")
-        return result
+        return result if result else summary_text
     except Exception as e:
-        logger.error(f"[Refine Summary] {e}")
+        logger.error(f"[refine_summary] {e}")
         return summary_text
 
 
-# ── Improve Text ──────────────────────────────────────────────────────────────
+# ─── Improve Text ─────────────────────────────────────────────────────────────
 def improve_text_with_gemini(text: str, context: str = "bullet point") -> str:
-    if not text or len(text.strip()) < 3:
-        return text
+    prompt = f"""Rewrite this resume {context} to start with a strong action verb and sound highly impactful.
+Keep the same meaning. Return ONLY the improved text, no explanation.
 
-    prompt = f"""You are an expert resume writer at a top recruitment firm.
-
-TASK: Rewrite this resume {context} to be highly impactful, professional, and ATS-optimized.
-
-STRICT RULES:
-1. MUST start with a strong action verb: Led, Built, Developed, Engineered, Designed, Optimised, Delivered, Launched, Architected, Reduced, Increased, Automated.
-2. Add measurable impact wherever plausible — if the original has numbers, keep them; if not, frame with impact direction (e.g., "significantly reduced" or "improving performance by X").
-3. Keep the EXACT same meaning — do not invent new facts.
-4. Output exactly 1 powerful sentence (for bullets) or improve naturally for other contexts.
-5. Return ONLY the improved text. No quotes, no labels, no explanation, no markdown.
-
-Original text:
+Original:
 {text}
 
-Improved version:"""
-
+Improved:"""
     try:
-        result = _call_gemini(prompt).strip().strip('"').strip()
+        result = _call_groq(prompt).strip().strip('"')
         if result.lower().startswith("improved"):
             result = result.split("\n", 1)[-1].strip()
-        logger.info(f"[Improve] Input: {text[:60]} | Output: {result[:60]}")
-        return result
+        return result if result else text
     except Exception as e:
-        logger.error(f"[Improve Text] {e}")
+        logger.error(f"[improve_text] {e}")
         return text
 
 
-# ── Resume Suggestions ────────────────────────────────────────────────────────
+# ─── Resume Suggestions ───────────────────────────────────────────────────────
 def generate_resume_suggestions_with_gemini(resume_data: dict) -> List[str]:
-    clean_data = {k: v for k, v in resume_data.items() if k not in ('skillInput', 'photo')}
-    prompt = f"""You are an expert career coach reviewing a resume in progress.
-Analyze the JSON below and give exactly 3-4 specific, actionable suggestions.
-Focus on: missing sections, lack of metrics, missing skills for the stated title, brevity.
-Return ONLY a raw JSON array of strings like ["suggestion 1", "suggestion 2"].
+    clean_data = {k: v for k, v in resume_data.items() if k not in ("skillInput", "photo")}
+    prompt = f"""Analyze this resume data and give exactly 4 specific, actionable improvements.
+Return ONLY a raw JSON array of strings.
 
 Resume data:
-{json.dumps(clean_data, indent=2)[:5000]}"""
-
+{json.dumps(clean_data, indent=2)[:4000]}"""
     try:
-        raw = _call_gemini(prompt)
+        raw = _call_groq(prompt)
         result = json.loads(_clean_json(raw))
         if isinstance(result, list):
-            return result
+            return result[:4]
         raise ValueError("Not a list")
     except Exception as e:
-        logger.error(f"[Suggestions] {e}")
+        logger.error(f"[resume_suggestions] {e}")
         return [
-            "Consider quantifying your achievements with numbers or percentages.",
-            "Make sure your skills list matches the keywords in your target job descriptions.",
-            "A strong professional summary can greatly improve your chances.",
-            "Add certifications or online courses to strengthen your profile.",
+            "Quantify your achievements with numbers or percentages.",
+            "Ensure your skills list matches target job description keywords.",
+            "Add a strong professional summary naming your role and top 3 skills.",
+            "Use action verbs like 'Led', 'Built', 'Scaled' at the start of every bullet.",
         ]
 
 
-# ── Job Suggestions ───────────────────────────────────────────────────────────
+# ─── Job Suggestions ─────────────────────────────────────────────────────────
 def generate_job_suggestions_with_gemini(profile_data: dict) -> List[Dict[str, Any]]:
-    skills = profile_data.get("skills", [])
+    skills = profile_data.get("skills", ["Python", "React", "FastAPI"])
     title = profile_data.get("title", "")
-    scanned_skills = profile_data.get("scanned_skills", [])
-    if scanned_skills:
-        skills = scanned_skills
+    skills_str = ", ".join(skills[:15])
 
-    if not skills and not title:
-        return _default_job_suggestions()
+    prompt = f"""Generate 4 realistic tech job opportunities for a candidate with skills: {skills_str}
+Target role: {title or 'Software Engineer'}
 
-    skills_str = ', '.join(skills[:25]) if skills else 'Not specified'
-
-    prompt = f"""You are a career advisor with deep knowledge of the Indian and global tech job market.
-
-Generate 6 highly relevant job opportunities for a candidate with these skills: {skills_str}
-Target role: {title or 'Not specified'}
-
-Return ONLY a JSON array of exactly 6 job objects:
-[
-  {{
-    "id": <1-6>,
-    "title": "<specific job title matching their skills>",
-    "company": "<realistic tech company name or 'Various Companies'>",
-    "location": "<City, India or Remote>",
-    "type": "<Full-time|Part-time|Contract|Internship>",
-    "salary": "<realistic Indian salary like '8-15 LPA'>",
-    "tags": ["<actual skill from list>", "<another skill>", "<third skill>"],
-    "linkedinUrl": "https://www.linkedin.com/jobs/search/?keywords=<URL+encoded+title>&location=India",
-    "naukriUrl": "https://www.naukri.com/<hyphenated-job-title>-jobs"
-  }}
-]
-Rules: titles must be SPECIFIC to the skill set. Tags must be from the actual skills. Return ONLY the JSON array."""
-
+Return ONLY a JSON array of 4 job objects with keys:
+id, title, company, location, type, salary, tags, linkedinUrl, naukriUrl"""
     try:
-        raw = _call_gemini(prompt)
+        raw = _call_groq(prompt)
         data = json.loads(_clean_json(raw))
-        if isinstance(data, list) and len(data) > 0:
+        if isinstance(data, list) and data:
             return data
         raise ValueError("Invalid format")
     except Exception as e:
-        logger.error(f"[Job Suggestions] {e}")
-        return _default_job_suggestions(skills, title)
+        logger.error(f"[job_suggestions] {e}")
+        s = skills[:3] if skills else ["Python", "React", "Node.js"]
+        return [
+            {"id": 1, "title": "Full Stack Engineer", "company": "Tech Corp", "location": "Remote, India",
+             "type": "Full-time", "salary": "12-22 LPA", "tags": s,
+             "linkedinUrl": "https://www.linkedin.com/jobs/search/?keywords=Full+Stack+Engineer&location=India",
+             "naukriUrl": "https://www.naukri.com/full-stack-developer-jobs"},
+            {"id": 2, "title": "Backend Developer", "company": "Startup Labs", "location": "Bangalore, India",
+             "type": "Full-time", "salary": "10-18 LPA", "tags": s,
+             "linkedinUrl": "https://www.linkedin.com/jobs/search/?keywords=Backend+Developer&location=India",
+             "naukriUrl": "https://www.naukri.com/backend-developer-jobs"},
+        ]
 
 
-def _default_job_suggestions(skills=None, title="") -> List[Dict[str, Any]]:
-    s1 = skills[0] if skills else "Software"
-    s2 = skills[1] if skills and len(skills) > 1 else "React"
-    s3 = skills[2] if skills and len(skills) > 2 else "Python"
-    return [
-        {"id": 1, "title": f"{s1} Developer", "company": "TechCorp Solutions", "location": "Remote, India", "type": "Full-time", "salary": "8-15 LPA", "tags": [s1, s2, s3], "linkedinUrl": f"https://www.linkedin.com/jobs/search/?keywords={s1}+Developer&location=India", "naukriUrl": f"https://www.naukri.com/{s1.lower()}-developer-jobs"},
-        {"id": 2, "title": "Full Stack Engineer", "company": "Innovation Labs", "location": "Bangalore, India", "type": "Full-time", "salary": "12-22 LPA", "tags": [s2, s3, "Node.js"], "linkedinUrl": "https://www.linkedin.com/jobs/search/?keywords=Full+Stack+Engineer&location=India", "naukriUrl": "https://www.naukri.com/full-stack-developer-jobs"},
-        {"id": 3, "title": "Software Engineer", "company": "Various", "location": "Hybrid, India", "type": "Full-time", "salary": "6-12 LPA", "tags": [s1, s2, s3], "linkedinUrl": "https://www.linkedin.com/jobs/search/?keywords=Software+Engineer&location=India", "naukriUrl": "https://www.naukri.com/software-engineer-jobs"},
-    ]
+# ─── JD Analyzer (legacy stub — kept for any existing callers) ───────────────
+def analyze_jd_with_gemini(jd_text: str) -> Dict[str, Any]:
+    """Kept for backward compatibility. Returns minimal data."""
+    from urllib.parse import quote_plus
+    return {
+        "role_title": "See ATS Scanner results",
+        "key_skills_required": [],
+        "experience_level": "Not specified",
+        "suggestions": ["Use the ATS Resume Scanner for comprehensive analysis."],
+        "how_to_start": ["Upload your resume to the ATS Scanner above."],
+        "skills_to_learn": [],
+        "certifications": [],
+        "similar_jobs": [
+            {"title": "Software Engineer", "company": "Various", "url": f"https://www.linkedin.com/jobs/search/?keywords={quote_plus('Software Engineer')}&location=India"},
+        ],
+    }

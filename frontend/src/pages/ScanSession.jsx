@@ -3,440 +3,678 @@ import axios from 'axios';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import {
-  UploadCloud, Sparkles, Filter, Download, Loader2, FileText,
-  ExternalLink, AlertCircle, CheckCircle2, X, Briefcase, ChevronRight, Target, BookOpen
+  UploadCloud, Sparkles, Download, Loader2, FileText,
+  AlertCircle, CheckCircle2, X, TrendingUp, ShieldCheck,
+  Lightbulb, Award, Brain, AlertTriangle, Star, Zap,
+  CheckCircle, BarChart2, ArrowRight, Users,
 } from 'lucide-react';
-import CandidateCard from '../components/CandidateCard';
-import DetailedReport from './DetailedReport';
-
 import { API_BASE } from '../config';
 
-export default function ScanSession({ clearTrigger, setActiveTab }) {
-  const [jobDescription, setJobDescription] = useState('');
-  const [isAnalyzingJd, setIsAnalyzingJd] = useState(false);
-  const [jdResults, setJdResults] = useState(null);
-  const [jdError, setJdError] = useState(null);
-
-  const [files, setFiles] = useState([]);
-  const [isScanning, setIsScanning] = useState(false);
-  const [results, setResults] = useState(null);
-  const [scanError, setScanError] = useState(null);
-  const [sortOrder, setSortOrder] = useState('score_desc');
-  const [showFilter, setShowFilter] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef(null);
-  const candidatesListRef = useRef(null);
-
-  const handleClearAll = () => {
-    setJobDescription('');
-    setJdResults(null);
-    setJdError(null);
-    setFiles([]);
-    setResults(null);
-    setScanError(null);
-    setSelectedCandidate(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  React.useEffect(() => {
-    if (clearTrigger > 0) handleClearAll();
-  }, [clearTrigger]);
-
-  const handleFileDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const droppedFiles = Array.from(e.dataTransfer.files).filter(f =>
-      f.name.toLowerCase().endsWith('.pdf') || f.name.toLowerCase().endsWith('.docx')
-    );
-    if (droppedFiles.length === 0) { alert('Please drop PDF or DOCX files only.'); return; }
-    setFiles(prev => {
-      const existing = new Set(prev.map(f => f.name));
-      return [...prev, ...droppedFiles.filter(f => !existing.has(f.name))];
-    });
-  };
-
-  const handleFileSelect = (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    setFiles(prev => {
-      const existing = new Set(prev.map(f => f.name));
-      return [...prev, ...selectedFiles.filter(f => !existing.has(f.name))];
-    });
-  };
-
-  const removeFile = (index) => setFiles(files.filter((_, i) => i !== index));
-
-  const analyzeJd = async () => {
-    if (!jobDescription || jobDescription.trim().length < 10) {
-      setJdError('Please provide a valid Job Description (at least 10 characters).');
-      return;
-    }
-    setJdError(null);
-    setJdResults(null);
-    setIsAnalyzingJd(true);
-    try {
-      const response = await axios.post(`${API_BASE}/analyze-jd`, { job_description: jobDescription });
-      setJdResults(response.data);
-    } catch (error) {
-      const msg = error.response?.data?.detail || error.message || 'Unknown error';
-      setJdError(`Failed to analyze Job Description: ${msg}. Make sure the backend is running.`);
-    } finally {
-      setIsAnalyzingJd(false);
-    }
-  };
-
-  const runScan = async () => {
-    if (files.length === 0) { setScanError('Please upload at least one resume (PDF or DOCX).'); return; }
-    setScanError(null);
-    setIsScanning(true);
-    const formData = new FormData();
-    files.forEach(file => formData.append('files', file));
-
-    try {
-      const response = await axios.post(`${API_BASE}/analyze-resumes`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 180000,
-      });
-      const resultsData = response.data.results;
-      if (!resultsData || resultsData.length === 0) {
-        setScanError('No results returned from the server.');
-      } else {
-        setResults(resultsData);
-        // Store all skills found across scanned resumes for Job Matching
-        const allSkills = [...new Set(resultsData.flatMap(r => r.skills_found || []))];
-        if (allSkills.length > 0) {
-          localStorage.setItem('scanned_resume_skills', JSON.stringify(allSkills));
-          localStorage.setItem('scanned_resume_title', resultsData[0]?.filename || '');
-        }
-      }
-    } catch (error) {
-      const msg = error.response?.data?.detail || error.message || 'Connection refused';
-      if (msg.includes('Network Error') || msg.includes('ECONNREFUSED') || msg.includes('Connection')) {
-        setScanError('Cannot connect to the backend server. Please start it first.');
-      } else {
-        setScanError(`Scan failed: ${msg}`);
-      }
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  const handleDownloadPDF = async () => {
-    if (!results || results.length === 0 || !candidatesListRef.current) return;
-    try {
-      const canvas = await html2canvas(candidatesListRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width / 2, canvas.height / 2 + 100] });
-      pdf.setFontSize(18);
-      pdf.text('ATS Scan Summary Report', 20, 30);
-      pdf.setFontSize(10);
-      pdf.text(`Generated on: ${new Date().toLocaleString()}`, 20, 45);
-      pdf.text(`Total Candidates: ${results.length}`, 20, 55);
-      pdf.addImage(imgData, 'PNG', 0, 70, canvas.width / 2, canvas.height / 2);
-      pdf.save(`ATS_Scan_Results_${new Date().getTime()}.pdf`);
-    } catch (error) { alert('Failed to export PDF results.'); }
-  };
-
-  const handleFindJobs = () => {
-    if (setActiveTab) setActiveTab('matching');
-  };
-
-  const sortedResults = results ? [...results].sort((a, b) => {
-    if (sortOrder === 'score_desc') return b.score - a.score;
-    if (sortOrder === 'score_asc') return a.score - b.score;
-    if (sortOrder === 'exp_desc') return b.experience - a.experience;
-    return 0;
-  }) : null;
-
-  if (selectedCandidate) {
-    return <DetailedReport candidate={selectedCandidate} onBack={() => setSelectedCandidate(null)} />;
-  }
+/* ── Score Ring ───────────────────────────────────────────────── */
+function ScoreRing({ score, size = 140 }) {
+  const r = size / 2 - 14;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+  const color = score >= 80 ? '#22c55e' : score >= 60 ? '#6c63ff' : score >= 40 ? '#f59e0b' : '#ef4444';
+  const grade = score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 55 ? 'C' : score >= 40 ? 'D' : 'F';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="currentColor" strokeWidth={12} className="text-slate-200 dark:text-slate-700" />
+        <circle cx={size/2} cy={size/2} r={r} fill="none"
+          stroke={color} strokeWidth={12}
+          strokeDasharray={circ} strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size/2} ${size/2})`}
+          style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-black text-slate-900 dark:text-white leading-none" style={{ fontSize: size > 100 ? '2rem' : '1.3rem' }}>{score}</span>
+        <span className="text-[10px] font-bold text-slate-400 mt-0.5">Grade {grade}</span>
+      </div>
+    </div>
+  );
+}
 
-      {/* ── JD Analyzer ── */}
-      <div className="grid-2">
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className="flex-between" style={{ marginBottom: '1rem' }}>
-            <div>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Sparkles size={18} color="var(--primary)" /> Analyze Job Description</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>Paste any JD — AI will give role-specific improvement tips, certifications & job links.</p>
-            </div>
+/* ── Score Bar ────────────────────────────────────────────────── */
+function ScoreBar({ label, value, max, icon: Icon, color = '#6c63ff' }) {
+  const pct = Math.round((value / max) * 100);
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-1.5 text-xs">
+        <span className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
+          {Icon && <Icon size={12} style={{ color }} />} {label}
+        </span>
+        <span className="font-bold" style={{ color }}>{value}/{max}</span>
+      </div>
+      <div className="score-bar-track">
+        <div
+          className="h-full rounded-full transition-all duration-1000"
+          style={{ width: `${pct}%`, background: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ── Skill Chip ───────────────────────────────────────────────── */
+function Chip({ label, color = '#6c63ff', bg = 'rgba(108,99,255,0.1)' }) {
+  return (
+    <span
+      className="chip text-[11px]"
+      style={{ color, background: bg, borderColor: `${color}33` }}
+    >
+      {label}
+    </span>
+  );
+}
+
+/* ── Tab Button ───────────────────────────────────────────────── */
+function TabBtn({ active, onClick, icon: Icon, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2.5 text-xs font-semibold whitespace-nowrap transition-all ${
+        active
+          ? 'border-primary text-primary dark:text-primary-400 bg-white dark:bg-surface-800'
+          : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+      }`}
+    >
+      <Icon size={13} /> {children}
+    </button>
+  );
+}
+
+/* ── Full Result Panel ────────────────────────────────────────── */
+function ScanResultPanel({ result, onReset }) {
+  const reportRef = useRef(null);
+  const [tab, setTab] = useState('overview');
+
+  const {
+    filename = 'resume', ats_score = 0, grade = 'F', verdict = '',
+    score_breakdown = {}, strong_skills = [], critical_missing_skills = [],
+    improvements = [], interview_tips = [], errors = [],
+    parsed_skills = [], experience_years = 0, parsed_text = '',
+  } = result;
+
+  const color = ats_score >= 80 ? '#22c55e' : ats_score >= 60 ? '#6c63ff' : ats_score >= 40 ? '#f59e0b' : '#ef4444';
+  const gradeBg = ats_score >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
+    : ats_score >= 60 ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400'
+    : ats_score >= 40 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+    : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400';
+
+  const handleDownload = async () => {
+    if (!reportRef.current) return;
+    try {
+      const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true, backgroundColor: '#0f172a' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
+      pdf.save(`ATS_Report_${filename.replace(/\.[^/.]+$/, '')}.pdf`);
+    } catch { alert('Export failed. Please try again.'); }
+  };
+
+  const TABS = [
+    { id: 'overview',  label: 'Overview',        icon: BarChart2 },
+    { id: 'skills',    label: 'Skills',           icon: Award },
+    { id: 'improve',   label: 'Improvements',     icon: TrendingUp },
+    { id: 'interview', label: 'Interview Tips',   icon: Brain },
+    { id: 'errors',    label: `Issues (${errors.length})`, icon: AlertCircle },
+  ];
+
+  return (
+    <div ref={reportRef} className="space-y-5 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck size={20} style={{ color }} />
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">ATS Scan Complete</h2>
+            <span className={`badge text-[11px] font-bold ${gradeBg}`}>Grade {grade}</span>
           </div>
-          <textarea
-            className="form-input"
-            placeholder="Paste the full Job Description here..."
-            value={jobDescription}
-            onChange={e => { setJobDescription(e.target.value); setJdError(null); }}
-            style={{ height: '220px', flex: 1, marginBottom: '1rem', resize: 'vertical' }}
-          />
-          {jdError && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--danger)', fontSize: '0.82rem', marginBottom: '0.75rem', padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8 }}>
-              <AlertCircle size={16} /> {jdError}
-            </div>
-          )}
-          <button className="btn btn-primary" onClick={analyzeJd} disabled={isAnalyzingJd}>
-            {isAnalyzingJd ? <><Loader2 className="spin" size={18} /> Analyzing JD...</> : 'Analyze Job Description'}
-          </button>
+          <p className="text-xs text-slate-400 truncate max-w-sm">{filename}</p>
         </div>
-
-        {/* JD Results */}
-        <div className="card" style={{ backgroundColor: 'var(--bg-color)', overflowY: 'auto', maxHeight: 520 }}>
-          <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}><Target size={18} color="var(--primary)" /> JD Analysis Results</h3>
-          {isAnalyzingJd ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-              <Loader2 size={36} className="spin" style={{ marginBottom: '1rem' }} />
-              <p>AI is reading the job description...</p>
-            </div>
-          ) : jdResults ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {/* Role Info */}
-              {(jdResults.role_title || jdResults.experience_level) && (
-                <div style={{ padding: '12px 16px', background: 'var(--secondary)', borderRadius: 10, border: '1px solid var(--border-color)' }}>
-                  {jdResults.role_title && <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)', marginBottom: 4 }}>{jdResults.role_title}</p>}
-                  {jdResults.experience_level && <span className="badge badge-primary">{jdResults.experience_level}</span>}
-                </div>
-              )}
-
-              {/* Key Skills Required */}
-              {jdResults.key_skills_required?.length > 0 && (
-                <div>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Skills Required by This JD</h4>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {jdResults.key_skills_required.map((sk, i) => (
-                      <span key={i} style={{ padding: '4px 10px', background: '#fef3c7', color: '#92400e', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600 }}>{sk}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Profile Improvement Suggestions */}
-              {jdResults.suggestions?.length > 0 && (
-                <div>
-                  <h4 style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={14} /> How to Improve Your Profile for This Role</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {jdResults.suggestions.map((s, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 10, padding: '8px 12px', background: 'var(--card-bg)', borderRadius: 8, border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
-                        <ChevronRight size={16} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 2 }} />
-                        <span>{s}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Skills to Learn */}
-              {jdResults.skills_to_learn?.length > 0 && (
-                <div>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#dc2626', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><BookOpen size={14} /> Skills to Learn for This Role</h4>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {jdResults.skills_to_learn.map((sk, i) => (
-                      <span key={i} style={{ padding: '4px 10px', background: 'rgba(239,68,68,0.08)', color: '#dc2626', borderRadius: 20, fontSize: '0.78rem', fontWeight: 500 }}>{sk}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Steps to Get Started */}
-              {jdResults.how_to_start?.length > 0 && (
-                <div>
-                  <h4 style={{ fontSize: '0.85rem', color: '#7c3aed', fontWeight: 700, marginBottom: 8 }}>Steps to Get Started</h4>
-                  <ol style={{ paddingLeft: '1.4rem', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {jdResults.how_to_start.map((s, i) => (
-                      <li key={i} style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>{s}</li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {/* Certifications */}
-              {jdResults.certifications?.length > 0 && (
-                <div>
-                  <h4 style={{ fontSize: '0.85rem', color: 'var(--warning)', fontWeight: 700, marginBottom: 8 }}>Recommended Certifications</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {jdResults.certifications.map((cert, i) => (
-                      <div key={i} style={{ padding: '8px 12px', backgroundColor: 'var(--card-bg)', borderRadius: 8, border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{cert.name}</span>
-                        <a href={cert.url} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          View <ExternalLink size={12} />
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Similar Jobs */}
-              {jdResults.similar_jobs?.length > 0 && (
-                <div>
-                  <h4 style={{ fontSize: '0.85rem', color: 'var(--success)', fontWeight: 700, marginBottom: 8 }}>Live Job Listings</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {jdResults.similar_jobs.map((job, i) => (
-                      <div key={i} style={{ padding: '10px 12px', backgroundColor: 'var(--card-bg)', borderRadius: 8, border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{job.title}</div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{job.company}</div>
-                        </div>
-                        <a href={job.url} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          Apply <ExternalLink size={13} />
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', marginTop: '3rem', color: 'var(--text-muted)' }}>
-              <FileText size={32} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-              <p>Paste a Job Description and click "Analyze" to see role-specific AI insights here.</p>
-            </div>
-          )}
+        <div className="flex gap-2">
+          <button className="btn btn-outline text-xs px-3 py-2" onClick={onReset}>
+            <X size={13} /> New Scan
+          </button>
+          <button className="btn btn-primary text-xs px-3 py-2" onClick={handleDownload}>
+            <Download size={13} /> Download
+          </button>
         </div>
       </div>
 
-      <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
-
-      {/* ── Resume Scanner ── */}
-      <div className="grid-2">
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className="flex-between" style={{ marginBottom: '1rem' }}>
-            <div>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Target size={18} color="var(--primary)" /> ATS Resume Scanner</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                Upload PDF or DOCX resumes for AI-powered ATS analysis.
-              </p>
-            </div>
-            <span className="badge badge-primary">{files.length} Uploaded</span>
-          </div>
-
-          <div
-            className="upload-zone"
-            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleFileDrop}
-            style={{
-              border: `2px dashed ${isDragging ? 'var(--primary)' : 'var(--border-color)'}`,
-              borderRadius: 12, padding: '2rem',
-              textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: isDragging ? 'var(--secondary)' : 'var(--bg-color)',
-              cursor: 'pointer', marginBottom: '1rem',
-              transition: 'all 0.2s ease'
-            }}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <UploadCloud size={40} color={isDragging ? 'var(--primary)' : 'var(--text-muted)'} style={{ marginBottom: '1rem', transition: 'all 0.2s' }} />
-            <h4 style={{ marginBottom: '0.5rem' }}>Drag & Drop resumes here</h4>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              Supports <strong>PDF</strong> and <strong>DOCX</strong> — text must be selectable (not scanned image)
-            </p>
-            <button className="btn btn-outline" onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}>
-              Browse Files
-            </button>
-            <input type="file" multiple accept=".pdf,.docx" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileSelect} />
-          </div>
-
-          {files.length > 0 && (
-            <div style={{ maxHeight: 120, overflowY: 'auto', marginBottom: '1rem', border: '1px solid var(--border-color)', borderRadius: 8, padding: '0.5rem' }}>
-              {files.map((f, idx) => (
-                <div key={idx} className="flex-between" style={{ padding: '4px 6px', fontSize: '0.875rem', borderRadius: 4 }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                    📄 {f.name}
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 6 }}>({(f.size / 1024).toFixed(0)} KB)</span>
-                  </span>
-                  <button onClick={() => removeFile(idx)} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', flexShrink: 0 }}>
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {scanError && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: 'var(--danger)', fontSize: '0.82rem', marginBottom: '0.75rem', padding: '10px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8, lineHeight: 1.5 }}>
-              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} /> {scanError}
-            </div>
-          )}
-
-          <button className="btn btn-primary" onClick={runScan} disabled={isScanning || files.length === 0}>
-            {isScanning ? <><Loader2 className="spin" size={18} /> Analyzing Resumes...</> : `Scan ${files.length > 0 ? files.length : ''} Resume${files.length !== 1 ? 's' : ''} with AI`}
-          </button>
-          {isScanning && (
-            <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
-              ⏳ This may take 10-30 seconds per resume. Please wait...
-            </p>
-          )}
-
-          {results && results.length > 0 && (
-            <button
-              className="btn btn-outline"
-              onClick={handleFindJobs}
-              style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', borderColor: 'var(--primary)', color: 'var(--primary)' }}
-            >
-              <Briefcase size={16} /> Find Matching Jobs from This Resume
-            </button>
+      {/* Hero row */}
+      <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-4">
+        {/* Score card */}
+        <div className="card flex flex-col items-center justify-center gap-2 p-6 min-w-[180px] dark:bg-surface-800">
+          <ScoreRing score={ats_score} size={140} />
+          <p className="text-xs text-slate-400 font-medium">ATS Match Score</p>
+          {experience_years > 0 && (
+            <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 text-[10px]">
+              ~{experience_years} yrs exp
+            </span>
           )}
         </div>
 
-        {/* Ranked Candidates */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'var(--card-bg)', maxHeight: 560, overflow: 'hidden' }}>
-          <div className="flex-between" style={{ marginBottom: '1.5rem', flexShrink: 0 }}>
-            <div>
-              <h3>Ranked Candidates</h3>
-              <p style={{ fontSize: '0.85rem' }}>AI ATS scores — click a card for full analysis</p>
-            </div>
-            <div style={{ display: 'flex', gap: 8, position: 'relative' }}>
-              <button className="btn btn-outline" style={{ padding: 8 }} onClick={() => setShowFilter(!showFilter)}>
-                <Filter size={18} />
-              </button>
-              {showFilter && (
-                <div style={{ position: 'absolute', top: '100%', right: '40px', backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 8, padding: '0.5rem', zIndex: 10, minWidth: 150, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                  {[['score_desc', 'Highest Score'], ['score_asc', 'Lowest Score'], ['exp_desc', 'Most Experience']].map(([val, label]) => (
-                    <div key={val} style={{ padding: '6px 10px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: sortOrder === val ? 'bold' : 'normal', borderRadius: 4, background: sortOrder === val ? 'var(--secondary)' : 'transparent' }} onClick={() => { setSortOrder(val); setShowFilter(false); }}>{label}</div>
-                  ))}
-                </div>
-              )}
-              <button className="btn btn-outline" style={{ padding: 8 }} onClick={handleDownloadPDF} disabled={!results || results.length === 0}>
-                <Download size={18} />
-              </button>
-            </div>
+        {/* Breakdown card */}
+        <div className="card dark:bg-surface-800 space-y-4 flex flex-col justify-between">
+          <div>
+            <p className="section-label mb-2">AI Verdict</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic leading-relaxed">
+              "{verdict}"
+            </p>
           </div>
+          <div className="space-y-3">
+            <ScoreBar label="Formatting & Contact" value={score_breakdown.formatting || 0} max={20} icon={FileText}   color="#6c63ff" />
+            <ScoreBar label="Skill Density"        value={score_breakdown.skills || 0}     max={30} icon={Award}      color="#22c55e" />
+            <ScoreBar label="Impact & Metrics"     value={score_breakdown.impact || 0}     max={30} icon={TrendingUp} color="#f59e0b" />
+            <ScoreBar label="Education"            value={score_breakdown.education || 0}  max={20} icon={Star}       color="#06b6d4" />
+          </div>
+        </div>
+      </div>
 
-          <div ref={candidatesListRef} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', flex: 1, paddingRight: 4 }}>
-            {sortedResults ? (
-              sortedResults.length > 0 ? (
-                sortedResults.map((cand, idx) => (
-                  <div key={idx}>
-                    {cand.error && !cand.score ? (
-                      <div style={{ padding: '1rem', background: 'rgba(239,68,68,0.06)', border: '1px solid var(--danger)', borderRadius: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--danger)', fontWeight: 600, marginBottom: 4 }}>
-                          <AlertCircle size={16} /> {cand.filename}
-                        </div>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cand.error}</p>
-                      </div>
-                    ) : (
-                      <CandidateCard candidate={cand} onClick={() => setSelectedCandidate(cand)} />
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--text-muted)' }}>
-                  <AlertCircle size={32} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                  <p>No candidates could be processed.</p>
+      {/* Tabs */}
+      <div className="border-b border-slate-200 dark:border-slate-700 flex overflow-x-auto gap-0.5 scrollbar-none">
+        {TABS.map(t => (
+          <TabBtn key={t.id} active={tab === t.id} onClick={() => setTab(t.id)} icon={t.icon}>
+            {t.label}
+          </TabBtn>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="animate-fade-in">
+
+        {/* Overview */}
+        {tab === 'overview' && (
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="card dark:bg-surface-800">
+              <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 size={16} />
+                <span className="text-sm font-bold">Strong Skills</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {strong_skills.length > 0
+                  ? strong_skills.map((s, i) => <Chip key={i} label={s} color="#22c55e" bg="rgba(34,197,94,0.1)" />)
+                  : <p className="text-xs text-slate-400">No strong skills detected.</p>}
+              </div>
+            </div>
+
+            <div className="card dark:bg-surface-800">
+              <div className="flex items-center gap-2 mb-3 text-red-500">
+                <AlertTriangle size={16} />
+                <span className="text-sm font-bold">Critical Gaps</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {critical_missing_skills.length > 0
+                  ? critical_missing_skills.map((s, i) => <Chip key={i} label={s} color="#ef4444" bg="rgba(239,68,68,0.1)" />)
+                  : <p className="text-xs text-emerald-500">No critical gaps found!</p>}
+              </div>
+            </div>
+
+            {parsed_text && (
+              <div className="card dark:bg-surface-800 sm:col-span-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText size={15} className="text-slate-400" />
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Resume Content Preview</span>
                 </div>
-              )
-            ) : (
-              <div style={{ textAlign: 'center', marginTop: '4rem', color: 'var(--text-muted)' }}>
-                <FileText size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                <p>Upload resumes and click "Scan" to see ATS scores here.</p>
-                <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>The AI will analyze each resume and rank candidates by score.</p>
+                <div className="rounded-xl bg-slate-50 dark:bg-surface-950 border border-slate-200 dark:border-slate-700 p-4 text-xs text-slate-500 dark:text-slate-400 max-h-40 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                  {parsed_text}
+                </div>
               </div>
             )}
           </div>
-        </div>
+        )}
+
+        {/* Skills */}
+        {tab === 'skills' && (
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="card dark:bg-surface-800">
+              <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle size={16} />
+                <span className="text-sm font-bold">Skills Found in Resume</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {parsed_skills.length > 0
+                  ? parsed_skills.map((s, i) => <Chip key={i} label={s} color="#22c55e" bg="rgba(34,197,94,0.1)" />)
+                  : <p className="text-xs text-slate-400">No skills extracted.</p>}
+              </div>
+            </div>
+
+            <div className="card dark:bg-surface-800 space-y-4">
+              <div className="flex items-center gap-2 text-amber-500">
+                <Zap size={16} />
+                <span className="text-sm font-bold">Skills to Add for ATS Boost</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {critical_missing_skills.map((s, i) => <Chip key={i} label={s} color="#f59e0b" bg="rgba(245,158,11,0.1)" />)}
+              </div>
+              <div className="rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800/30 p-3 text-xs text-primary-700 dark:text-primary-300 leading-relaxed">
+                <strong>💡 Tip:</strong> Only add skills you genuinely have experience with. Honesty in interviews is critical.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Improvements */}
+        {tab === 'improve' && (
+          <div className="card dark:bg-surface-800">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={18} className="text-primary" />
+              <span className="text-base font-bold text-slate-900 dark:text-white">Actionable Improvement Plan</span>
+            </div>
+            {improvements.length > 0 ? (
+              <div className="space-y-3">
+                {improvements.map((imp, i) => (
+                  <div key={i} className="flex gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-surface-900 p-4 items-start">
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary text-xs font-bold">
+                      {i + 1}
+                    </div>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{imp}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-emerald-500">
+                <CheckCircle2 size={36} className="mx-auto mb-2 opacity-70" />
+                <p className="font-semibold">No major improvements needed — excellent resume!</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Interview Tips */}
+        {tab === 'interview' && (
+          <div className="card dark:bg-surface-800 space-y-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Brain size={18} className="text-violet-500" />
+                <span className="text-base font-bold text-slate-900 dark:text-white">How to Stand Out in Your Interview</span>
+              </div>
+              <p className="text-xs text-slate-400">AI-tailored tips based on your specific resume and experience.</p>
+            </div>
+
+            {interview_tips.length > 0 ? (
+              <div className="space-y-3">
+                {interview_tips.map((tip, i) => (
+                  <div key={i} className="flex gap-3 rounded-xl border border-violet-200 dark:border-violet-800/30 bg-violet-50 dark:bg-violet-900/10 p-4 items-start">
+                    <Lightbulb size={15} className="text-violet-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{tip}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">No interview tips generated. Try scanning again.</p>
+            )}
+
+            <div className="rounded-xl bg-gradient-to-br from-primary-50 to-violet-50 dark:from-primary-900/20 dark:to-violet-900/20 border border-primary-100 dark:border-primary-800/30 p-4">
+              <p className="text-xs font-bold text-primary mb-1">🏆 The Golden Rule</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Every interview answer should follow the <strong className="text-slate-800 dark:text-slate-200">STAR method</strong>: Situation → Task → Action → Result. Always close with a number or measurable outcome.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Issues */}
+        {tab === 'errors' && (
+          <div className="card dark:bg-surface-800">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertCircle size={18} style={{ color: errors.length > 0 ? '#ef4444' : '#22c55e' }} />
+              <span className="text-base font-bold text-slate-900 dark:text-white">Resume Issues & Weaknesses</span>
+            </div>
+            {errors.length > 0 ? (
+              <div className="space-y-3">
+                {errors.map((err, i) => {
+                  const sevColor = err.severity === 'high' ? '#ef4444' : err.severity === 'medium' ? '#f59e0b' : '#94a3b8';
+                  const sevBg    = err.severity === 'high'
+                    ? 'border-red-200 bg-red-50 dark:border-red-800/30 dark:bg-red-900/10'
+                    : err.severity === 'medium'
+                    ? 'border-amber-200 bg-amber-50 dark:border-amber-800/30 dark:bg-amber-900/10'
+                    : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-surface-900';
+                  return (
+                    <div key={i} className={`flex gap-3 rounded-xl border p-4 items-start ${sevBg}`}>
+                      <AlertTriangle size={14} style={{ color: sevColor }} className="flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: sevColor }}>
+                            {err.severity}
+                          </span>
+                          <span className="text-[10px] text-slate-400 capitalize">
+                            {err.category?.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{err.message}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-emerald-500">
+                <CheckCircle2 size={36} className="mx-auto mb-2 opacity-70" />
+                <p className="font-semibold">No critical issues found — great resume!</p>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
+    </div>
+  );
+}
+
+/* ── Main ScanSession Page ────────────────────────────────────── */
+export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }) {
+  const [files, setFiles]               = useState([]);
+  const [isScanning, setIsScanning]     = useState(false);
+  const [scanResult, setScanResult]     = useState(null);
+  const [rankedResults, setRankedResults] = useState(null);
+  const [scanError, setScanError]       = useState(null);
+  const [isDragging, setIsDragging]     = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [mode, setMode]                 = useState('single');
+  const fileInputRef                    = useRef(null);
+
+  const handleClearAll = () => {
+    setFiles([]); setScanResult(null); setRankedResults(null);
+    setScanError(null); setSelectedCandidate(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  React.useEffect(() => { if (clearTrigger > 0) handleClearAll(); }, [clearTrigger]);
+
+  const addFiles = (newFiles) => {
+    const valid = Array.from(newFiles).filter(
+      f => f.name.toLowerCase().endsWith('.pdf') || f.name.toLowerCase().endsWith('.docx')
+    );
+    if (!valid.length) { setScanError('Please upload PDF or DOCX files only.'); return; }
+    setScanError(null);
+    setFiles(prev => {
+      const ex = new Set(prev.map(f => f.name));
+      return [...prev, ...valid.filter(f => !ex.has(f.name))];
+    });
+  };
+
+  const runSingleScan = async () => {
+    if (!files.length) { setScanError('Please upload a resume file.'); return; }
+    setScanError(null); setIsScanning(true); setScanResult(null);
+    const fd = new FormData();
+    fd.append('file', files[0]);
+    try {
+      const res = await axios.post(`${API_BASE}/scan`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }, timeout: 90000,
+      });
+      setScanResult(res.data);
+      const skills = res.data.parsed_skills || res.data.strong_skills || [];
+      if (skills.length) {
+        localStorage.setItem('scanned_resume_skills', JSON.stringify(skills));
+        localStorage.setItem('scanned_resume_title', files[0].name || '');
+      }
+    } catch (err) {
+      setScanError(`Scan failed: ${err.response?.data?.detail || err.message || 'Connection error'}`);
+    } finally { setIsScanning(false); }
+  };
+
+  const runMultiScan = async () => {
+    if (!files.length) { setScanError('Please upload at least one resume.'); return; }
+    setScanError(null); setIsScanning(true); setRankedResults(null);
+    const fd = new FormData();
+    files.forEach(f => fd.append('files', f));
+    try {
+      const res = await axios.post(`${API_BASE}/analyze-resumes`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }, timeout: 240000,
+      });
+      const data = res.data.results || [];
+      if (!data.length) { setScanError('No results returned.'); return; }
+      setRankedResults(data);
+      const allSkills = [...new Set(data.flatMap(r => r.parsed_skills || r.skills_found || []))];
+      if (allSkills.length) localStorage.setItem('scanned_resume_skills', JSON.stringify(allSkills));
+    } catch (err) {
+      setScanError(`Scan failed: ${err.response?.data?.detail || err.message || 'Connection error'}`);
+    } finally { setIsScanning(false); }
+  };
+
+  const handleScan = () => mode === 'single' ? runSingleScan() : runMultiScan();
+
+  /* ── Candidate detail view ── */
+  if (selectedCandidate) {
+    const asResult = {
+      filename:                selectedCandidate.filename,
+      ats_score:               selectedCandidate.ats_score || selectedCandidate.score || 0,
+      grade:                   selectedCandidate.grade || 'N/A',
+      verdict:                 selectedCandidate.verdict || selectedCandidate.reasoning || '',
+      score_breakdown: {
+        formatting: selectedCandidate.score_breakdown?.formatting || 0,
+        skills:     selectedCandidate.score_breakdown?.skills     || 0,
+        impact:     selectedCandidate.score_breakdown?.experience || selectedCandidate.score_breakdown?.impact || 0,
+        education:  selectedCandidate.score_breakdown?.education  || 0,
+      },
+      strong_skills:           selectedCandidate.strong_skills || [],
+      critical_missing_skills: selectedCandidate.critical_missing_skills || [],
+      improvements:            selectedCandidate.improvements || selectedCandidate.improvements_needed || [],
+      interview_tips:          selectedCandidate.interview_tips || [],
+      errors:                  selectedCandidate.errors || [],
+      parsed_skills:           selectedCandidate.parsed_skills || selectedCandidate.skills_found || [],
+      experience_years:        selectedCandidate.experience_years || selectedCandidate.experience || 0,
+      parsed_text:             selectedCandidate.parsed_text || '',
+    };
+    return <ScanResultPanel result={asResult} onReset={() => setSelectedCandidate(null)} />;
+  }
+
+  /* ── Single scan result ── */
+  if (scanResult) {
+    return <ScanResultPanel result={scanResult} onReset={handleClearAll} />;
+  }
+
+  /* ── Upload UI ─────────────────────────────────────────────── */
+  return (
+    <div className="space-y-8">
+
+      {/* Hero */}
+      <div className="text-center space-y-2 pt-2">
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary-200 dark:border-primary-800/50 bg-primary-50 dark:bg-primary-900/20 px-4 py-1.5 mb-2">
+          <ShieldCheck size={14} className="text-primary" />
+          <span className="text-xs font-bold text-primary">AI-Powered ATS Resume Scanner</span>
+        </div>
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white leading-tight">
+          Get Your Resume <span className="text-primary">AI-Reviewed</span> in Seconds
+        </h1>
+        <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto leading-relaxed">
+          Upload your resume — our AI reads every line, scores it, finds gaps, and gives you interview-ready tips.
+        </p>
+      </div>
+
+      {/* Mode toggle */}
+      <div className="flex justify-center gap-2">
+        {[
+          { id: 'single', label: 'Deep Scan (1 Resume)',    icon: Sparkles },
+          { id: 'multi',  label: 'Compare Multiple Resumes', icon: Users },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => { setMode(id); handleClearAll(); }}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all border ${
+              mode === id
+                ? 'bg-primary text-white border-primary shadow-glow-sm'
+                : 'bg-white dark:bg-surface-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-primary-300'
+            }`}
+          >
+            <Icon size={14} /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Upload card */}
+      <div className="mx-auto max-w-2xl w-full card dark:bg-surface-800 p-6 space-y-4">
+        {/* Drop zone */}
+        <div
+          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={e => { e.preventDefault(); setIsDragging(false); addFiles(e.dataTransfer.files); }}
+          onClick={() => fileInputRef.current?.click()}
+          className={`relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed py-10 px-4 cursor-pointer transition-all duration-200 ${
+            isDragging
+              ? 'border-primary bg-primary-50 dark:bg-primary-900/20'
+              : 'border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-600 bg-slate-50 dark:bg-surface-900'
+          }`}
+        >
+          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-colors ${
+            isDragging ? 'bg-primary text-white' : 'bg-primary-100 dark:bg-primary-900/40 text-primary'
+          }`}>
+            <UploadCloud size={28} />
+          </div>
+          <div className="text-center">
+            <p className="text-base font-bold text-slate-800 dark:text-slate-200">
+              {mode === 'single' ? 'Drop your resume here' : 'Drop multiple resumes here'}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Supports <strong>PDF</strong> and <strong>DOCX</strong> · Text must be selectable (not a scan)
+            </p>
+          </div>
+          <button
+            className="btn btn-outline text-xs px-4 py-2"
+            onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}
+          >
+            Browse Files
+          </button>
+          <input
+            type="file" multiple={mode === 'multi'} accept=".pdf,.docx"
+            className="hidden" ref={fileInputRef} onChange={e => addFiles(e.target.files)}
+          />
+        </div>
+
+        {/* File list */}
+        {files.length > 0 && (
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden divide-y divide-slate-100 dark:divide-slate-700">
+            {files.map((f, i) => (
+              <div key={i} className="flex items-center justify-between px-4 py-3 bg-white dark:bg-surface-800">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/40">
+                    <FileText size={15} className="text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{f.name}</p>
+                    <p className="text-[10px] text-slate-400">{(f.size / 1024).toFixed(0)} KB</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setFiles(files.filter((_, idx) => idx !== i))}
+                  className="ml-2 flex-shrink-0 p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error */}
+        {scanError && (
+          <div className="flex gap-2.5 rounded-xl border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/10 p-4 text-sm text-red-600 dark:text-red-400 items-start">
+            <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+            <span>{scanError}</span>
+          </div>
+        )}
+
+        {/* CTA */}
+        <button
+          className="btn btn-primary w-full py-3 text-sm md:text-base font-bold rounded-2xl"
+          onClick={handleScan}
+          disabled={isScanning || !files.length}
+        >
+          {isScanning
+            ? <><Loader2 size={18} className="spin" /> AI is reading your resume…</>
+            : <><Sparkles size={18} /> {mode === 'single' ? 'Scan & Analyze My Resume' : `Rank ${files.length} Resume${files.length !== 1 ? 's' : ''} with AI`}</>
+          }
+        </button>
+
+        {isScanning && (
+          <p className="text-center text-xs text-slate-400">
+            ⏳ Deep AI audit in progress — usually takes 10–30 seconds…
+          </p>
+        )}
+      </div>
+
+      {/* Multi-ranked results */}
+      {rankedResults && rankedResults.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BarChart2 size={18} className="text-primary" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Ranked Results ({rankedResults.length} resumes)
+              </h3>
+            </div>
+            <button className="btn btn-ghost text-xs" onClick={() => { setRankedResults(null); setFiles([]); }}>
+              <X size={13} /> Clear
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {rankedResults.map((r, i) => {
+              const s = r.ats_score || r.score || 0;
+              const rankColor = i === 0 ? 'text-amber-500' : i === 1 ? 'text-slate-400' : i === 2 ? 'text-orange-600' : 'text-slate-500';
+              return (
+                <div
+                  key={i}
+                  onClick={() => setSelectedCandidate(r)}
+                  className="card dark:bg-surface-800 flex items-center gap-4 p-4 cursor-pointer hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md transition-all group"
+                >
+                  <div className={`text-xl font-black flex-shrink-0 w-8 text-center ${rankColor}`}>
+                    #{i + 1}
+                  </div>
+                  <ScoreRing score={s} size={60} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                      {r.candidate_name || r.filename}
+                    </p>
+                    <p className="text-xs text-slate-400 truncate mt-0.5">
+                      {r.verdict || r.reasoning || 'Click to view full report'}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {(r.strong_skills || r.skills_found || []).slice(0, 4).map((sk, j) => (
+                        <Chip key={j} label={sk} color="#6c63ff" bg="rgba(108,99,255,0.1)" />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    <span className={`badge text-[10px] font-bold ${
+                      s >= 80 ? 'badge-success' : s >= 60 ? 'badge-primary' : s >= 40 ? 'badge-warning' : 'badge-danger'
+                    }`}>
+                      Grade {r.grade || 'N/A'}
+                    </span>
+                    <ArrowRight size={15} className="text-slate-300 dark:text-slate-600 group-hover:text-primary transition-colors" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Feature highlights (only when empty) */}
+      {!rankedResults && !scanResult && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl mx-auto">
+          {[
+            { icon: Brain,       color: 'text-violet-500', bg: 'bg-violet-100 dark:bg-violet-900/30', label: 'AI Reads Every Line',  desc: 'Real understanding — not just keywords' },
+            { icon: TrendingUp,  color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30', label: 'Actionable Fixes',  desc: 'Bullet-by-bullet rewrites' },
+            { icon: Lightbulb,  color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30', label: 'Interview Coaching',    desc: 'Tips for your specific role' },
+            { icon: ShieldCheck, color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30', label: 'ATS Score',             desc: 'Know before you apply' },
+          ].map(({ icon: Icon, color, bg, label, desc }) => (
+            <div key={label} className="card dark:bg-surface-800 text-center p-4 space-y-2">
+              <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl ${bg}`}>
+                <Icon size={20} className={color} />
+              </div>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{label}</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
