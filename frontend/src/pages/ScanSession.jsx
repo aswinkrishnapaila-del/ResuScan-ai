@@ -6,7 +6,7 @@ import {
   UploadCloud, Sparkles, Download, Loader2, FileText,
   AlertCircle, CheckCircle2, X, TrendingUp, ShieldCheck,
   Lightbulb, Award, Brain, AlertTriangle, Star, Zap,
-  CheckCircle, BarChart2, ArrowRight, Users,
+  CheckCircle, BarChart2, ArrowRight, Users, Wand2, Image,
 } from 'lucide-react';
 import { API_BASE } from '../config';
 
@@ -87,10 +87,148 @@ function TabBtn({ active, onClick, icon: Icon, children }) {
   );
 }
 
+/* ── Improve Resume Modal ─────────────────────────────────────── */
+function ImproveModal({ resumeText, onClose }) {
+  const [improved, setImproved] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleImprove = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await axios.post(`${API_BASE}/improve-resume`, {
+        resume_text: resumeText,
+      }, { timeout: 120000 });
+      setImproved(res.data);
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'AI improvement failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!improved?.improved_text) return;
+    const blob = new Blob([improved.improved_text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'improved_resume.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="card w-full max-w-3xl max-h-[85vh] overflow-y-auto dark:bg-surface-800 animate-fade-in"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <Wand2 size={20} className="text-violet-500" />
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">AI Resume Improvement</h2>
+          </div>
+          <button onClick={onClose} className="btn btn-ghost p-1.5"><X size={18} /></button>
+        </div>
+
+        {!improved && !isLoading && !error && (
+          <div className="text-center py-6 space-y-4">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-100 dark:bg-violet-900/30">
+              <Wand2 size={28} className="text-violet-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Improve Your Resume with AI</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                Our AI will fix grammar mistakes, make unprofessional sections professional, and boost impact — without changing your original meaning.
+              </p>
+            </div>
+            <button className="btn btn-primary px-8 py-3 text-sm" onClick={handleImprove}>
+              <Sparkles size={16} /> Start AI Improvement
+            </button>
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="text-center py-10 space-y-3">
+            <Loader2 size={36} className="spin mx-auto text-violet-500" />
+            <p className="text-sm text-slate-500 dark:text-slate-400">AI is improving your resume… This may take 20-40 seconds.</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="space-y-4">
+            <div className="flex gap-2.5 rounded-xl border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/10 p-4 text-sm text-red-600 dark:text-red-400 items-start">
+              <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+            <button className="btn btn-primary w-full py-2.5" onClick={handleImprove}>
+              <Sparkles size={16} /> Try Again
+            </button>
+          </div>
+        )}
+
+        {improved && (
+          <div className="space-y-4">
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Grammar Fixes', value: improved.grammar_fixes || 0, color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+                { label: 'Tone Improvements', value: improved.tone_improvements || 0, color: 'text-violet-500', bg: 'bg-violet-100 dark:bg-violet-900/30' },
+                { label: 'Impact Boosts', value: improved.impact_boosts || 0, color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
+              ].map(s => (
+                <div key={s.label} className={`rounded-xl ${s.bg} p-3 text-center`}>
+                  <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                  <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Changes Summary */}
+            {improved.changes_summary?.length > 0 && (
+              <div className="rounded-xl border border-violet-200 dark:border-violet-800/30 bg-violet-50 dark:bg-violet-900/10 p-4">
+                <p className="text-xs font-bold text-violet-600 dark:text-violet-400 mb-2">✨ Changes Made:</p>
+                <ul className="space-y-1.5">
+                  {improved.changes_summary.map((change, i) => (
+                    <li key={i} className="flex gap-2 text-xs text-slate-600 dark:text-slate-400">
+                      <CheckCircle size={12} className="text-violet-500 flex-shrink-0 mt-0.5" />
+                      <span>{change}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Improved Text */}
+            <div>
+              <p className="section-label mb-2">Improved Resume Text</p>
+              <div className="rounded-xl bg-slate-50 dark:bg-surface-950 border border-slate-200 dark:border-slate-700 p-4 text-sm text-slate-700 dark:text-slate-300 max-h-60 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                {improved.improved_text}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button className="btn btn-primary flex-1 py-2.5" onClick={handleDownload}>
+                <Download size={16} /> Download Improved Resume
+              </button>
+              <button className="btn btn-outline py-2.5" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Full Result Panel ────────────────────────────────────────── */
 function ScanResultPanel({ result, onReset }) {
   const reportRef = useRef(null);
   const [tab, setTab] = useState('overview');
+  const [showImproveModal, setShowImproveModal] = useState(false);
 
   const {
     filename = 'resume', ats_score = 0, grade = 'F', verdict = '',
@@ -125,245 +263,269 @@ function ScanResultPanel({ result, onReset }) {
   ];
 
   return (
-    <div ref={reportRef} className="space-y-5 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck size={20} style={{ color }} />
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">ATS Scan Complete</h2>
-            <span className={`badge text-[11px] font-bold ${gradeBg}`}>Grade {grade}</span>
-          </div>
-          <p className="text-xs text-slate-400 truncate max-w-sm">{filename}</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="btn btn-outline text-xs px-3 py-2" onClick={onReset}>
-            <X size={13} /> New Scan
-          </button>
-          <button className="btn btn-primary text-xs px-3 py-2" onClick={handleDownload}>
-            <Download size={13} /> Download
-          </button>
-        </div>
-      </div>
-
-      {/* Hero row */}
-      <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-4">
-        {/* Score card */}
-        <div className="card flex flex-col items-center justify-center gap-2 p-6 min-w-[180px] dark:bg-surface-800">
-          <ScoreRing score={ats_score} size={140} />
-          <p className="text-xs text-slate-400 font-medium">ATS Match Score</p>
-          {experience_years > 0 && (
-            <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 text-[10px]">
-              ~{experience_years} yrs exp
-            </span>
-          )}
-        </div>
-
-        {/* Breakdown card */}
-        <div className="card dark:bg-surface-800 space-y-4 flex flex-col justify-between">
+    <>
+      <div ref={reportRef} className="space-y-5 animate-fade-in">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <p className="section-label mb-2">AI Verdict</p>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic leading-relaxed">
-              "{verdict}"
-            </p>
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldCheck size={20} style={{ color }} />
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">ATS Scan Complete</h2>
+              <span className={`badge text-[11px] font-bold ${gradeBg}`}>Grade {grade}</span>
+            </div>
+            <p className="text-xs text-slate-400 truncate max-w-sm">{filename}</p>
           </div>
-          <div className="space-y-3">
-            <ScoreBar label="Formatting & Contact" value={score_breakdown.formatting || 0} max={20} icon={FileText}   color="#6c63ff" />
-            <ScoreBar label="Skill Density"        value={score_breakdown.skills || 0}     max={30} icon={Award}      color="#22c55e" />
-            <ScoreBar label="Impact & Metrics"     value={score_breakdown.impact || 0}     max={30} icon={TrendingUp} color="#f59e0b" />
-            <ScoreBar label="Education"            value={score_breakdown.education || 0}  max={20} icon={Star}       color="#06b6d4" />
+          <div className="flex gap-2 flex-wrap">
+            <button className="btn btn-outline text-xs px-3 py-2" onClick={onReset}>
+              <X size={13} /> New Scan
+            </button>
+            <button
+              className="btn text-xs px-3 py-2 bg-violet-600 text-white hover:bg-violet-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+              onClick={() => setShowImproveModal(true)}
+            >
+              <Wand2 size={13} /> Improve Resume
+            </button>
+            <button className="btn btn-primary text-xs px-3 py-2" onClick={handleDownload}>
+              <Download size={13} /> Download
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="border-b border-slate-200 dark:border-slate-700 flex overflow-x-auto gap-0.5 scrollbar-none">
-        {TABS.map(t => (
-          <TabBtn key={t.id} active={tab === t.id} onClick={() => setTab(t.id)} icon={t.icon}>
-            {t.label}
-          </TabBtn>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      <div className="animate-fade-in">
-
-        {/* Overview */}
-        {tab === 'overview' && (
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="card dark:bg-surface-800">
-              <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 size={16} />
-                <span className="text-sm font-bold">Strong Skills</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {strong_skills.length > 0
-                  ? strong_skills.map((s, i) => <Chip key={i} label={s} color="#22c55e" bg="rgba(34,197,94,0.1)" />)
-                  : <p className="text-xs text-slate-400">No strong skills detected.</p>}
-              </div>
-            </div>
-
-            <div className="card dark:bg-surface-800">
-              <div className="flex items-center gap-2 mb-3 text-red-500">
-                <AlertTriangle size={16} />
-                <span className="text-sm font-bold">Critical Gaps</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {critical_missing_skills.length > 0
-                  ? critical_missing_skills.map((s, i) => <Chip key={i} label={s} color="#ef4444" bg="rgba(239,68,68,0.1)" />)
-                  : <p className="text-xs text-emerald-500">No critical gaps found!</p>}
-              </div>
-            </div>
-
-            {parsed_text && (
-              <div className="card dark:bg-surface-800 sm:col-span-2">
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText size={15} className="text-slate-400" />
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Resume Content Preview</span>
-                </div>
-                <div className="rounded-xl bg-slate-50 dark:bg-surface-950 border border-slate-200 dark:border-slate-700 p-4 text-xs text-slate-500 dark:text-slate-400 max-h-40 overflow-y-auto whitespace-pre-wrap leading-relaxed">
-                  {parsed_text}
-                </div>
-              </div>
+        {/* Hero row */}
+        <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-4">
+          {/* Score card */}
+          <div className="card flex flex-col items-center justify-center gap-2 p-6 min-w-[180px] dark:bg-surface-800">
+            <ScoreRing score={ats_score} size={140} />
+            <p className="text-xs text-slate-400 font-medium">ATS Match Score</p>
+            {experience_years > 0 && (
+              <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 text-[10px]">
+                ~{experience_years} yrs exp
+              </span>
             )}
           </div>
-        )}
 
-        {/* Skills */}
-        {tab === 'skills' && (
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="card dark:bg-surface-800">
-              <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle size={16} />
-                <span className="text-sm font-bold">Skills Found in Resume</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {parsed_skills.length > 0
-                  ? parsed_skills.map((s, i) => <Chip key={i} label={s} color="#22c55e" bg="rgba(34,197,94,0.1)" />)
-                  : <p className="text-xs text-slate-400">No skills extracted.</p>}
-              </div>
-            </div>
-
-            <div className="card dark:bg-surface-800 space-y-4">
-              <div className="flex items-center gap-2 text-amber-500">
-                <Zap size={16} />
-                <span className="text-sm font-bold">Skills to Add for ATS Boost</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {critical_missing_skills.map((s, i) => <Chip key={i} label={s} color="#f59e0b" bg="rgba(245,158,11,0.1)" />)}
-              </div>
-              <div className="rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800/30 p-3 text-xs text-primary-700 dark:text-primary-300 leading-relaxed">
-                <strong>💡 Tip:</strong> Only add skills you genuinely have experience with. Honesty in interviews is critical.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Improvements */}
-        {tab === 'improve' && (
-          <div className="card dark:bg-surface-800">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp size={18} className="text-primary" />
-              <span className="text-base font-bold text-slate-900 dark:text-white">Actionable Improvement Plan</span>
-            </div>
-            {improvements.length > 0 ? (
-              <div className="space-y-3">
-                {improvements.map((imp, i) => (
-                  <div key={i} className="flex gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-surface-900 p-4 items-start">
-                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary text-xs font-bold">
-                      {i + 1}
-                    </div>
-                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{imp}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-emerald-500">
-                <CheckCircle2 size={36} className="mx-auto mb-2 opacity-70" />
-                <p className="font-semibold">No major improvements needed — excellent resume!</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Interview Tips */}
-        {tab === 'interview' && (
-          <div className="card dark:bg-surface-800 space-y-4">
+          {/* Breakdown card */}
+          <div className="card dark:bg-surface-800 space-y-4 flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Brain size={18} className="text-violet-500" />
-                <span className="text-base font-bold text-slate-900 dark:text-white">How to Stand Out in Your Interview</span>
-              </div>
-              <p className="text-xs text-slate-400">AI-tailored tips based on your specific resume and experience.</p>
-            </div>
-
-            {interview_tips.length > 0 ? (
-              <div className="space-y-3">
-                {interview_tips.map((tip, i) => (
-                  <div key={i} className="flex gap-3 rounded-xl border border-violet-200 dark:border-violet-800/30 bg-violet-50 dark:bg-violet-900/10 p-4 items-start">
-                    <Lightbulb size={15} className="text-violet-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{tip}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400">No interview tips generated. Try scanning again.</p>
-            )}
-
-            <div className="rounded-xl bg-gradient-to-br from-primary-50 to-violet-50 dark:from-primary-900/20 dark:to-violet-900/20 border border-primary-100 dark:border-primary-800/30 p-4">
-              <p className="text-xs font-bold text-primary mb-1">🏆 The Golden Rule</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Every interview answer should follow the <strong className="text-slate-800 dark:text-slate-200">STAR method</strong>: Situation → Task → Action → Result. Always close with a number or measurable outcome.
+              <p className="section-label mb-2">AI Verdict</p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic leading-relaxed">
+                "{verdict}"
               </p>
             </div>
-          </div>
-        )}
-
-        {/* Issues */}
-        {tab === 'errors' && (
-          <div className="card dark:bg-surface-800">
-            <div className="flex items-center gap-2 mb-4">
-              <AlertCircle size={18} style={{ color: errors.length > 0 ? '#ef4444' : '#22c55e' }} />
-              <span className="text-base font-bold text-slate-900 dark:text-white">Resume Issues & Weaknesses</span>
+            <div className="space-y-3">
+              <ScoreBar label="Formatting & Contact" value={score_breakdown.formatting || 0} max={20} icon={FileText}   color="#6c63ff" />
+              <ScoreBar label="Skill Density"        value={score_breakdown.skills || 0}     max={30} icon={Award}      color="#22c55e" />
+              <ScoreBar label="Impact & Metrics"     value={score_breakdown.impact || 0}     max={30} icon={TrendingUp} color="#f59e0b" />
+              <ScoreBar label="Education"            value={score_breakdown.education || 0}  max={20} icon={Star}       color="#06b6d4" />
             </div>
-            {errors.length > 0 ? (
-              <div className="space-y-3">
-                {errors.map((err, i) => {
-                  const sevColor = err.severity === 'high' ? '#ef4444' : err.severity === 'medium' ? '#f59e0b' : '#94a3b8';
-                  const sevBg    = err.severity === 'high'
-                    ? 'border-red-200 bg-red-50 dark:border-red-800/30 dark:bg-red-900/10'
-                    : err.severity === 'medium'
-                    ? 'border-amber-200 bg-amber-50 dark:border-amber-800/30 dark:bg-amber-900/10'
-                    : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-surface-900';
-                  return (
-                    <div key={i} className={`flex gap-3 rounded-xl border p-4 items-start ${sevBg}`}>
-                      <AlertTriangle size={14} style={{ color: sevColor }} className="flex-shrink-0 mt-0.5" />
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: sevColor }}>
-                            {err.severity}
-                          </span>
-                          <span className="text-[10px] text-slate-400 capitalize">
-                            {err.category?.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{err.message}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-emerald-500">
-                <CheckCircle2 size={36} className="mx-auto mb-2 opacity-70" />
-                <p className="font-semibold">No critical issues found — great resume!</p>
-              </div>
-            )}
           </div>
-        )}
+        </div>
 
+        {/* Tabs */}
+        <div className="border-b border-slate-200 dark:border-slate-700 flex overflow-x-auto gap-0.5 scrollbar-none">
+          {TABS.map(t => (
+            <TabBtn key={t.id} active={tab === t.id} onClick={() => setTab(t.id)} icon={t.icon}>
+              {t.label}
+            </TabBtn>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="animate-fade-in">
+
+          {/* Overview */}
+          {tab === 'overview' && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="card dark:bg-surface-800">
+                <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 size={16} />
+                  <span className="text-sm font-bold">Strong Skills</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {strong_skills.length > 0
+                    ? strong_skills.map((s, i) => <Chip key={i} label={s} color="#22c55e" bg="rgba(34,197,94,0.1)" />)
+                    : <p className="text-xs text-slate-400">No strong skills detected.</p>}
+                </div>
+              </div>
+
+              <div className="card dark:bg-surface-800">
+                <div className="flex items-center gap-2 mb-3 text-red-500">
+                  <AlertTriangle size={16} />
+                  <span className="text-sm font-bold">Critical Gaps</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {critical_missing_skills.length > 0
+                    ? critical_missing_skills.map((s, i) => <Chip key={i} label={s} color="#ef4444" bg="rgba(239,68,68,0.1)" />)
+                    : <p className="text-xs text-emerald-500">No critical gaps found!</p>}
+                </div>
+              </div>
+
+              {parsed_text && (
+                <div className="card dark:bg-surface-800 sm:col-span-2">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText size={15} className="text-slate-400" />
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Resume Content Preview</span>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 dark:bg-surface-950 border border-slate-200 dark:border-slate-700 p-4 text-xs text-slate-500 dark:text-slate-400 max-h-40 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                    {parsed_text}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Skills */}
+          {tab === 'skills' && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="card dark:bg-surface-800">
+                <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle size={16} />
+                  <span className="text-sm font-bold">Skills Found in Resume</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {parsed_skills.length > 0
+                    ? parsed_skills.map((s, i) => <Chip key={i} label={s} color="#22c55e" bg="rgba(34,197,94,0.1)" />)
+                    : <p className="text-xs text-slate-400">No skills extracted.</p>}
+                </div>
+              </div>
+
+              <div className="card dark:bg-surface-800 space-y-4">
+                <div className="flex items-center gap-2 text-amber-500">
+                  <Zap size={16} />
+                  <span className="text-sm font-bold">Skills to Add for ATS Boost</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {critical_missing_skills.map((s, i) => <Chip key={i} label={s} color="#f59e0b" bg="rgba(245,158,11,0.1)" />)}
+                </div>
+                <div className="rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800/30 p-3 text-xs text-primary-700 dark:text-primary-300 leading-relaxed">
+                  <strong>💡 Tip:</strong> Only add skills you genuinely have experience with. Honesty in interviews is critical.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Improvements */}
+          {tab === 'improve' && (
+            <div className="card dark:bg-surface-800">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={18} className="text-primary" />
+                  <span className="text-base font-bold text-slate-900 dark:text-white">Actionable Improvement Plan</span>
+                </div>
+                <button
+                  className="btn text-xs px-3 py-1.5 bg-violet-600 text-white hover:bg-violet-700 transition-all"
+                  onClick={() => setShowImproveModal(true)}
+                >
+                  <Wand2 size={12} /> Auto-Fix with AI
+                </button>
+              </div>
+              {improvements.length > 0 ? (
+                <div className="space-y-3">
+                  {improvements.map((imp, i) => (
+                    <div key={i} className="flex gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-surface-900 p-4 items-start">
+                      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary text-xs font-bold">
+                        {i + 1}
+                      </div>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{imp}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-emerald-500">
+                  <CheckCircle2 size={36} className="mx-auto mb-2 opacity-70" />
+                  <p className="font-semibold">No major improvements needed — excellent resume!</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Interview Tips */}
+          {tab === 'interview' && (
+            <div className="card dark:bg-surface-800 space-y-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Brain size={18} className="text-violet-500" />
+                  <span className="text-base font-bold text-slate-900 dark:text-white">How to Stand Out in Your Interview</span>
+                </div>
+                <p className="text-xs text-slate-400">AI-tailored tips based on your specific resume and experience.</p>
+              </div>
+
+              {interview_tips.length > 0 ? (
+                <div className="space-y-3">
+                  {interview_tips.map((tip, i) => (
+                    <div key={i} className="flex gap-3 rounded-xl border border-violet-200 dark:border-violet-800/30 bg-violet-50 dark:bg-violet-900/10 p-4 items-start">
+                      <Lightbulb size={15} className="text-violet-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{tip}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No interview tips generated. Try scanning again.</p>
+              )}
+
+              <div className="rounded-xl bg-gradient-to-br from-primary-50 to-violet-50 dark:from-primary-900/20 dark:to-violet-900/20 border border-primary-100 dark:border-primary-800/30 p-4">
+                <p className="text-xs font-bold text-primary mb-1">🏆 The Golden Rule</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Every interview answer should follow the <strong className="text-slate-800 dark:text-slate-200">STAR method</strong>: Situation → Task → Action → Result. Always close with a number or measurable outcome.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Issues */}
+          {tab === 'errors' && (
+            <div className="card dark:bg-surface-800">
+              <div className="flex items-center gap-2 mb-4">
+                <AlertCircle size={18} style={{ color: errors.length > 0 ? '#ef4444' : '#22c55e' }} />
+                <span className="text-base font-bold text-slate-900 dark:text-white">Resume Issues & Weaknesses</span>
+              </div>
+              {errors.length > 0 ? (
+                <div className="space-y-3">
+                  {errors.map((err, i) => {
+                    const sevColor = err.severity === 'high' ? '#ef4444' : err.severity === 'medium' ? '#f59e0b' : '#94a3b8';
+                    const sevBg    = err.severity === 'high'
+                      ? 'border-red-200 bg-red-50 dark:border-red-800/30 dark:bg-red-900/10'
+                      : err.severity === 'medium'
+                      ? 'border-amber-200 bg-amber-50 dark:border-amber-800/30 dark:bg-amber-900/10'
+                      : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-surface-900';
+                    return (
+                      <div key={i} className={`flex gap-3 rounded-xl border p-4 items-start ${sevBg}`}>
+                        <AlertTriangle size={14} style={{ color: sevColor }} className="flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: sevColor }}>
+                              {err.severity}
+                            </span>
+                            <span className="text-[10px] text-slate-400 capitalize">
+                              {err.category?.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{err.message}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-emerald-500">
+                  <CheckCircle2 size={36} className="mx-auto mb-2 opacity-70" />
+                  <p className="font-semibold">No critical issues found — great resume!</p>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
       </div>
-    </div>
+
+      {/* Improve Modal */}
+      {showImproveModal && (
+        <ImproveModal
+          resumeText={parsed_text}
+          onClose={() => setShowImproveModal(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -379,6 +541,8 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
   const [mode, setMode]                 = useState('single');
   const fileInputRef                    = useRef(null);
 
+  const ACCEPTED_TYPES = '.pdf,.docx,.jpg,.jpeg,.png';
+
   const handleClearAll = () => {
     setFiles([]); setScanResult(null); setRankedResults(null);
     setScanError(null); setSelectedCandidate(null);
@@ -388,10 +552,11 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
   React.useEffect(() => { if (clearTrigger > 0) handleClearAll(); }, [clearTrigger]);
 
   const addFiles = (newFiles) => {
+    const validExts = ['.pdf', '.docx', '.jpg', '.jpeg', '.png'];
     const valid = Array.from(newFiles).filter(
-      f => f.name.toLowerCase().endsWith('.pdf') || f.name.toLowerCase().endsWith('.docx')
+      f => validExts.some(ext => f.name.toLowerCase().endsWith(ext))
     );
-    if (!valid.length) { setScanError('Please upload PDF or DOCX files only.'); return; }
+    if (!valid.length) { setScanError('Please upload PDF, DOCX, JPG, or PNG files only.'); return; }
     setScanError(null);
     setFiles(prev => {
       const ex = new Set(prev.map(f => f.name));
@@ -406,7 +571,7 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
     fd.append('file', files[0]);
     try {
       const res = await axios.post(`${API_BASE}/scan`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }, timeout: 90000,
+        headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000,
       });
       setScanResult(res.data);
       const skills = res.data.parsed_skills || res.data.strong_skills || [];
@@ -426,7 +591,7 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
     files.forEach(f => fd.append('files', f));
     try {
       const res = await axios.post(`${API_BASE}/analyze-resumes`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }, timeout: 240000,
+        headers: { 'Content-Type': 'multipart/form-data' }, timeout: 300000,
       });
       const data = res.data.results || [];
       if (!data.length) { setScanError('No results returned.'); return; }
@@ -532,7 +697,10 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
               {mode === 'single' ? 'Drop your resume here' : 'Drop multiple resumes here'}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Supports <strong>PDF</strong> and <strong>DOCX</strong> · Text must be selectable (not a scan)
+              Supports <strong>PDF</strong>, <strong>DOCX</strong>, <strong>JPG</strong>, <strong>PNG</strong> · Scanned images & text resumes
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-center gap-1">
+              <Image size={10} /> Image-based & scanned resumes are automatically OCR-processed
             </p>
           </div>
           <button
@@ -542,7 +710,7 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
             Browse Files
           </button>
           <input
-            type="file" multiple={mode === 'multi'} accept=".pdf,.docx"
+            type="file" multiple={mode === 'multi'} accept={ACCEPTED_TYPES}
             className="hidden" ref={fileInputRef} onChange={e => addFiles(e.target.files)}
           />
         </div>
@@ -554,7 +722,10 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
               <div key={i} className="flex items-center justify-between px-4 py-3 bg-white dark:bg-surface-800">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/40">
-                    <FileText size={15} className="text-primary" />
+                    {f.name.match(/\.(jpg|jpeg|png)$/i)
+                      ? <Image size={15} className="text-primary" />
+                      : <FileText size={15} className="text-primary" />
+                    }
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{f.name}</p>
@@ -662,8 +833,8 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
           {[
             { icon: Brain,       color: 'text-violet-500', bg: 'bg-violet-100 dark:bg-violet-900/30', label: 'AI Reads Every Line',  desc: 'Real understanding — not just keywords' },
             { icon: TrendingUp,  color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30', label: 'Actionable Fixes',  desc: 'Bullet-by-bullet rewrites' },
-            { icon: Lightbulb,  color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30', label: 'Interview Coaching',    desc: 'Tips for your specific role' },
-            { icon: ShieldCheck, color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30', label: 'ATS Score',             desc: 'Know before you apply' },
+            { icon: Image,       color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30', label: 'Image & Scan OCR',    desc: 'Supports scanned PDFs & images' },
+            { icon: ShieldCheck, color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30', label: 'Resume Validation',  desc: 'Only accepts real resumes' },
           ].map(({ icon: Icon, color, bg, label, desc }) => (
             <div key={label} className="card dark:bg-surface-800 text-center p-4 space-y-2">
               <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl ${bg}`}>

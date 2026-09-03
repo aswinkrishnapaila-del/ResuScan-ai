@@ -1,6 +1,5 @@
 fastapi
 uvicorn
-google-genai
 PyPDF2
 python-docx
 pydantic
@@ -11,4 +10,6 @@ xhtml2pdf
 supabase==2.15.0
 scikit-learn
 requests
-
+pytesseract
+Pillow
+pdf2image

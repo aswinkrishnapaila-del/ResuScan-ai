@@ -5,13 +5,18 @@ from pydantic import BaseModel
 from services.nlp_service import (
     extract_text_from_pdf,
     extract_text_from_docx,
+    extract_text_from_image,
+    is_resume_content,
     scan_resume_with_ai,
+    improve_resume_with_ai,
     analyze_resume_with_gemini,
     analyze_jd_with_gemini,
     refine_summary_with_gemini,
     improve_text_with_gemini,
     generate_resume_suggestions_with_gemini,
     generate_job_suggestions_with_gemini,
+    generate_interview_questions,
+    generate_mock_test,
 )
 
 router = APIRouter()
@@ -38,6 +43,29 @@ class JobSuggestionsRequest(BaseModel):
     profile_data: dict = {}
 
 
+class ImproveResumeRequest(BaseModel):
+    resume_text: str
+
+
+class InterviewQuestionsRequest(BaseModel):
+    skills: List[str] = []
+    role: str = "Software Engineer"
+    category: str = "technical"
+    company_type: str = "product"
+
+
+class MockTestRequest(BaseModel):
+    skills: List[str] = []
+    role: str = "Software Engineer"
+    category: str = "technical"
+    company_type: str = "product"
+
+
+# ─── Supported file extensions ───────────────────────────────────────────────
+SUPPORTED_EXTENSIONS = ('.pdf', '.docx', '.jpg', '.jpeg', '.png')
+IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png')
+
+
 # ─── PRIMARY: Comprehensive AI Resume Scanner ─────────────────────────────────
 @router.post("/scan")
 async def scan_resume(
@@ -46,7 +74,7 @@ async def scan_resume(
 ):
     """
     Deep AI-powered ATS resume scanner.
-    Accepts a PDF or DOCX resume and returns:
+    Accepts PDF, DOCX, JPG, JPEG, or PNG resume and returns:
       - ATS score & grade
       - Verdict
       - Strong skills found
@@ -54,6 +82,7 @@ async def scan_resume(
       - Actionable improvement tips
       - Interview tips to stand out
       - Specific errors/weaknesses
+    First validates that the uploaded file is actually a resume.
     """
     if not file or not file.filename:
         raise HTTPException(status_code=400, detail="No resume file provided.")
@@ -64,15 +93,19 @@ async def scan_resume(
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
+    # Extract text based on file type
     try:
-        if filename.lower().endswith(".pdf"):
+        lower_name = filename.lower()
+        if lower_name.endswith(".pdf"):
             resume_text = extract_text_from_pdf(file_bytes)
-        elif filename.lower().endswith(".docx"):
+        elif lower_name.endswith(".docx"):
             resume_text = extract_text_from_docx(file_bytes)
+        elif any(lower_name.endswith(ext) for ext in IMAGE_EXTENSIONS):
+            resume_text = extract_text_from_image(file_bytes)
         else:
             raise HTTPException(
                 status_code=400,
-                detail="Unsupported file format. Please upload a PDF or DOCX file.",
+                detail=f"Unsupported file format. Please upload one of: {', '.join(SUPPORTED_EXTENSIONS)}",
             )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -84,8 +117,17 @@ async def scan_resume(
     if not resume_text or len(resume_text.strip()) < 30:
         raise HTTPException(
             status_code=400,
-            detail="Could not extract readable text from the resume. "
-                   "Please ensure the file is not image-based or password-protected.",
+            detail="Could not extract readable text from the file. "
+                   "Please ensure the file contains text and is not corrupted.",
+        )
+
+    # AI-powered resume validation — reject non-resume files
+    validation = is_resume_content(resume_text)
+    if not validation.get("is_resume", False):
+        raise HTTPException(
+            status_code=400,
+            detail=f"This file does not appear to be a resume. {validation.get('reason', '')} "
+                   "Please upload a valid resume (PDF, DOCX, or image of a resume).",
         )
 
     result = scan_resume_with_ai(resume_text, filename)
@@ -111,16 +153,25 @@ async def analyze_resumes(files: List[UploadFile] = File(...)):
                 results.append({"filename": filename, "error": "File is empty."})
                 continue
 
-            if filename.lower().endswith(".pdf"):
+            lower_name = filename.lower()
+            if lower_name.endswith(".pdf"):
                 resume_text = extract_text_from_pdf(file_bytes)
-            elif filename.lower().endswith(".docx"):
+            elif lower_name.endswith(".docx"):
                 resume_text = extract_text_from_docx(file_bytes)
+            elif any(lower_name.endswith(ext) for ext in IMAGE_EXTENSIONS):
+                resume_text = extract_text_from_image(file_bytes)
             else:
-                results.append({"filename": filename, "error": "Unsupported format. Use PDF or DOCX."})
+                results.append({"filename": filename, "error": f"Unsupported format. Use: {', '.join(SUPPORTED_EXTENSIONS)}"})
                 continue
 
             if not resume_text or len(resume_text.strip()) < 30:
                 results.append({"filename": filename, "error": "Could not extract readable text."})
+                continue
+
+            # Validate it's a resume
+            validation = is_resume_content(resume_text)
+            if not validation.get("is_resume", False):
+                results.append({"filename": filename, "error": f"Not a resume: {validation.get('reason', '')}"})
                 continue
 
             ai_result = scan_resume_with_ai(resume_text, filename)
@@ -174,6 +225,65 @@ async def analyze_resumes(files: List[UploadFile] = File(...)):
 
     results.sort(key=lambda x: x.get("score", 0), reverse=True)
     return {"results": results}
+
+
+# ─── Improve Resume (2nd AI Call) ────────────────────────────────────────────
+@router.post("/improve-resume")
+async def improve_resume(request: ImproveResumeRequest):
+    """
+    Takes resume text and returns AI-improved version with grammar fixes,
+    professional tone, and impact improvements.
+    """
+    if not request.resume_text or len(request.resume_text.strip()) < 30:
+        raise HTTPException(status_code=400, detail="Resume text is too short to improve.")
+
+    result = improve_resume_with_ai(request.resume_text)
+    return result
+
+
+# ─── Interview Questions ─────────────────────────────────────────────────────
+@router.post("/interview-questions")
+async def get_interview_questions(request: InterviewQuestionsRequest):
+    """
+    Generate interview preparation questions based on skills, role, and category.
+    Categories: technical, non-technical, aptitude, reasoning
+    """
+    valid_categories = ["technical", "non-technical", "aptitude", "reasoning"]
+    if request.category not in valid_categories:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}",
+        )
+
+    questions = generate_interview_questions(
+        skills=request.skills,
+        role=request.role,
+        category=request.category,
+        company_type=request.company_type,
+    )
+    return {"questions": questions, "category": request.category}
+
+
+# ─── Mock Test ────────────────────────────────────────────────────────────────
+@router.post("/mock-test")
+async def get_mock_test(request: MockTestRequest):
+    """
+    Generate a 10-question MCQ mock test for interview preparation.
+    """
+    valid_categories = ["technical", "non-technical", "aptitude", "reasoning"]
+    if request.category not in valid_categories:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}",
+        )
+
+    test = generate_mock_test(
+        skills=request.skills,
+        role=request.role,
+        category=request.category,
+        company_type=request.company_type,
+    )
+    return test
 
 
 # ─── AI Text Helpers ──────────────────────────────────────────────────────────

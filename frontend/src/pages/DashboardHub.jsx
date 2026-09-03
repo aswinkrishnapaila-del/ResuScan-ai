@@ -1,6 +1,6 @@
 import React from 'react';
 import { useUser } from '../context/UserContext';
-import { FileText, Briefcase, ArrowRight, Sparkles, TrendingUp, ShieldCheck } from 'lucide-react';
+import { FileText, Briefcase, ArrowRight, Sparkles, TrendingUp, ShieldCheck, GraduationCap } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const features = [
@@ -28,16 +28,25 @@ const features = [
     desc: 'Discover the best-fit roles from LinkedIn & Naukri that match your skills and experience level.',
     icon: Briefcase,
     gradient: 'from-emerald-500 to-teal-600',
-    badge: 'New',
-    badgeColor: 'badge-success',
     stat: 'Real openings',
+  },
+  {
+    id: 'interview',
+    title: 'Interview Prep',
+    desc: 'Practice with AI-generated questions, take MCQ mock tests, and master technical & HR interviews.',
+    icon: GraduationCap,
+    gradient: 'from-amber-500 to-orange-600',
+    badge: 'New',
+    badgeColor: 'badge-warning',
+    stat: 'Mock tests included',
   },
 ];
 
 const stats = [
-  { label: 'Avg Scan Time',     value: '~20s', icon: TrendingUp,  color: 'text-blue-500' },
-  { label: 'Resume Templates',  value: '12+',  icon: FileText,    color: 'text-emerald-500' },
-  { label: 'Checks Per Resume', value: '50+',  icon: ShieldCheck, color: 'text-amber-500' },
+  { label: 'Avg Scan Time',     value: '~20s', icon: TrendingUp,    color: 'text-blue-500' },
+  { label: 'Resume Templates',  value: '12+',  icon: FileText,      color: 'text-emerald-500' },
+  { label: 'Checks Per Resume', value: '50+',  icon: ShieldCheck,   color: 'text-amber-500' },
+  { label: 'Interview Topics',  value: '4',    icon: GraduationCap, color: 'text-violet-500' },
 ];
 
 const container = {
@@ -69,17 +78,25 @@ export default function DashboardHub({ setActiveTab }) {
           <p className="text-sm md:text-base text-white/80 max-w-md">
             Optimize your career profile and land your dream job faster with AI-powered analysis.
           </p>
-          <button
-            className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 border border-white/30 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-all"
-            onClick={() => setActiveTab('resumes')}
-          >
-            <ShieldCheck size={16} /> Scan Your Resume <ArrowRight size={16} />
-          </button>
+          <div className="mt-5 flex gap-3 flex-wrap">
+            <button
+              className="inline-flex items-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 border border-white/30 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-all"
+              onClick={() => setActiveTab('resumes')}
+            >
+              <ShieldCheck size={16} /> Scan Your Resume <ArrowRight size={16} />
+            </button>
+            <button
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-all"
+              onClick={() => setActiveTab('interview')}
+            >
+              <GraduationCap size={16} /> Practice Interviews
+            </button>
+          </div>
         </div>
       </motion.div>
 
       {/* Stats row */}
-      <motion.div variants={item} className="grid grid-cols-3 gap-3 md:gap-4">
+      <motion.div variants={item} className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         {stats.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="card flex flex-col items-center text-center p-4 dark:bg-surface-800">
             <div className={`mb-2 ${color}`}>
@@ -94,7 +111,7 @@ export default function DashboardHub({ setActiveTab }) {
       {/* Feature cards */}
       <div>
         <motion.p variants={item} className="section-label mb-4">Tools</motion.p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((feat) => {
             const Icon = feat.icon;
             return (
@@ -137,7 +154,7 @@ export default function DashboardHub({ setActiveTab }) {
         <div>
           <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">💡 Pro Tip</p>
           <p className="text-sm text-amber-700 dark:text-amber-500 mt-0.5">
-            Upload your resume to the ATS Scanner first — the AI will detect your skills and automatically pre-fill the Job Matching tool for you.
+            Upload your resume to the ATS Scanner first — the AI will detect your skills and automatically personalize Interview Prep questions and Job Matching for you.
           </p>
         </div>
       </motion.div>

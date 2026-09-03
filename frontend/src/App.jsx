@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   LayoutDashboard, FileText, User, Settings,
   HelpCircle, Archive, Sun, Moon, Briefcase, X,
-  ShieldCheck, Menu,
+  ShieldCheck, Menu, GraduationCap,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ScanSession    from './pages/ScanSession';
@@ -11,25 +11,28 @@ import DashboardHub   from './pages/DashboardHub';
 import ProfileBuilder from './pages/ProfileBuilder';
 import JobMatching    from './pages/JobMatching';
 import DraftsHub      from './pages/DraftsHub';
+import InterviewPrep  from './pages/InterviewPrep';
 import { UserProvider, useUser } from './context/UserContext';
 import './index.css';
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard',      icon: LayoutDashboard },
-  { id: 'resumes',   label: 'ATS Scanner',    icon: ShieldCheck },
-  { id: 'builder',   label: 'Resume Builder', icon: Settings },
-  { id: 'profile',   label: 'Profile',        icon: User },
-  { id: 'drafts',    label: 'Drafts',         icon: Archive },
-  { id: 'matching',  label: 'Job Matching',   icon: Briefcase },
+  { id: 'dashboard',  label: 'Dashboard',       icon: LayoutDashboard },
+  { id: 'resumes',    label: 'ATS Scanner',     icon: ShieldCheck },
+  { id: 'builder',    label: 'Resume Builder',  icon: Settings },
+  { id: 'profile',    label: 'Profile',         icon: User },
+  { id: 'drafts',     label: 'Drafts',          icon: Archive },
+  { id: 'matching',   label: 'Job Matching',    icon: Briefcase },
+  { id: 'interview',  label: 'Interview Prep',  icon: GraduationCap },
 ];
 
 const PAGE_META = {
-  dashboard: { title: 'Dashboard',       subtitle: 'Career intelligence at a glance' },
-  resumes:   { title: 'ATS Resume Scanner', subtitle: 'AI-powered resume analysis & interview prep' },
-  builder:   { title: 'Resume Builder',  subtitle: 'Create ATS-friendly resumes with AI' },
-  profile:   { title: 'Profile',         subtitle: 'Manage your career profile' },
-  drafts:    { title: 'Drafts',          subtitle: 'Your saved resume drafts' },
-  matching:  { title: 'Job Matching',    subtitle: 'Find roles that match your skills' },
+  dashboard:  { title: 'Dashboard',            subtitle: 'Career intelligence at a glance' },
+  resumes:    { title: 'ATS Resume Scanner',   subtitle: 'AI-powered resume analysis & interview prep' },
+  builder:    { title: 'Resume Builder',       subtitle: 'Create ATS-friendly resumes with AI' },
+  profile:    { title: 'Profile',              subtitle: 'Manage your career profile' },
+  drafts:     { title: 'Drafts',               subtitle: 'Your saved resume drafts' },
+  matching:   { title: 'Job Matching',         subtitle: 'Find roles that match your skills' },
+  interview:  { title: 'Interview Prep',       subtitle: 'Practice questions & mock tests for your dream role' },
 };
 
 function Sidebar({ activeTab, setActiveTab, isDark, toggleDark, profile, loading, isOpen }) {
@@ -110,7 +113,7 @@ function Sidebar({ activeTab, setActiveTab, isDark, toggleDark, profile, loading
 }
 
 function BottomNav({ activeTab, setActiveTab }) {
-  const items = NAV_ITEMS.slice(0, 5);
+  const items = NAV_ITEMS.slice(0, 6);
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-900 pb-safe">
       {items.map(({ id, label, icon: Icon }) => (
@@ -148,9 +151,11 @@ function InfoModal({ onClose }) {
         <div className="space-y-4 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
           {[
             ['🤖 Intelligent Analysis', 'Groq AI reads your resume like a human recruiter — checking formatting, skill density, and quantifiable impact.'],
+            ['📷 Image & OCR Support', 'Upload scanned PDFs or images of resumes — our OCR engine extracts text automatically.'],
             ['🔒 Privacy First', 'We do NOT permanently store your resume data. Analysis is real-time; results stay in your browser.'],
             ['📋 Actionable Feedback', 'Instead of just a score, we give specific fixes and interview tips tailored to your resume.'],
-            ['✍️ Resume Builder', 'Build stunning, ATS-optimised resumes with AI-powered bullet rewrites and summary refinement.'],
+            ['✍️ Resume Improvement', 'AI fixes grammar, boosts impact, and makes your resume professional — download the improved version.'],
+            ['🎓 Interview Prep', 'Practice with AI-generated questions, mock tests, and detailed explanations for your dream role.'],
           ].map(([title, desc]) => (
             <div key={title} className="flex gap-3">
               <span className="text-base">{title.split(' ')[0]}</span>
@@ -241,6 +246,7 @@ function AppContent() {
               {activeTab === 'builder'   && <ResumeBuilder loadedDraft={loadedDraft} setLoadedDraft={setLoadedDraft} />}
               {activeTab === 'drafts'    && <DraftsHub setActiveTab={setActiveTab} setLoadedDraft={setLoadedDraft} />}
               {activeTab === 'matching'  && <JobMatching />}
+              {activeTab === 'interview' && <InterviewPrep />}
             </motion.div>
           </AnimatePresence>
         </div>
