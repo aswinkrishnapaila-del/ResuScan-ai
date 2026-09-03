@@ -558,10 +558,7 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
     );
     if (!valid.length) { setScanError('Please upload PDF, DOCX, JPG, or PNG files only.'); return; }
     setScanError(null);
-    setFiles(prev => {
-      const ex = new Set(prev.map(f => f.name));
-      return [...prev, ...valid.filter(f => !ex.has(f.name))];
-    });
+    setFiles([...valid].slice(0, 1)); // Enforce single file limit
   };
 
   const runSingleScan = async () => {
@@ -584,26 +581,7 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
     } finally { setIsScanning(false); }
   };
 
-  const runMultiScan = async () => {
-    if (!files.length) { setScanError('Please upload at least one resume.'); return; }
-    setScanError(null); setIsScanning(true); setRankedResults(null);
-    const fd = new FormData();
-    files.forEach(f => fd.append('files', f));
-    try {
-      const res = await axios.post(`${API_BASE}/analyze-resumes`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }, timeout: 300000,
-      });
-      const data = res.data.results || [];
-      if (!data.length) { setScanError('No results returned.'); return; }
-      setRankedResults(data);
-      const allSkills = [...new Set(data.flatMap(r => r.parsed_skills || r.skills_found || []))];
-      if (allSkills.length) localStorage.setItem('scanned_resume_skills', JSON.stringify(allSkills));
-    } catch (err) {
-      setScanError(`Scan failed: ${err.response?.data?.detail || err.message || 'Connection error'}`);
-    } finally { setIsScanning(false); }
-  };
-
-  const handleScan = () => mode === 'single' ? runSingleScan() : runMultiScan();
+  const handleScan = () => runSingleScan();
 
   /* ── Candidate detail view ── */
   if (selectedCandidate) {
@@ -653,67 +631,49 @@ export default function ScanSession({ clearTrigger, setActiveTab: setParentTab }
         </p>
       </div>
 
-      {/* Mode toggle */}
-      <div className="flex justify-center gap-2">
-        {[
-          { id: 'single', label: 'Deep Scan (1 Resume)',    icon: Sparkles },
-          { id: 'multi',  label: 'Compare Multiple Resumes', icon: Users },
-        ].map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => { setMode(id); handleClearAll(); }}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all border ${
-              mode === id
-                ? 'bg-primary text-white border-primary shadow-glow-sm'
-                : 'bg-white dark:bg-surface-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-primary-300'
-            }`}
-          >
-            <Icon size={14} /> {label}
-          </button>
-        ))}
-      </div>
-
       {/* Upload card */}
       <div className="mx-auto max-w-2xl w-full card dark:bg-surface-800 p-6 space-y-4">
-        {/* Drop zone */}
-        <div
-          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={e => { e.preventDefault(); setIsDragging(false); addFiles(e.dataTransfer.files); }}
-          onClick={() => fileInputRef.current?.click()}
-          className={`relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed py-10 px-4 cursor-pointer transition-all duration-200 ${
-            isDragging
-              ? 'border-primary bg-primary-50 dark:bg-primary-900/20'
-              : 'border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-600 bg-slate-50 dark:bg-surface-900'
-          }`}
-        >
-          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-colors ${
-            isDragging ? 'bg-primary text-white' : 'bg-primary-100 dark:bg-primary-900/40 text-primary'
-          }`}>
-            <UploadCloud size={28} />
-          </div>
-          <div className="text-center">
-            <p className="text-base font-bold text-slate-800 dark:text-slate-200">
-              {mode === 'single' ? 'Drop your resume here' : 'Drop multiple resumes here'}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Supports <strong>PDF</strong>, <strong>DOCX</strong>, <strong>JPG</strong>, <strong>PNG</strong> · Scanned images & text resumes
-            </p>
-            <p className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-center gap-1">
-              <Image size={10} /> Image-based & scanned resumes are automatically OCR-processed
-            </p>
-          </div>
-          <button
-            className="btn btn-outline text-xs px-4 py-2"
-            onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}
+        {/* Drop zone - hidden if file exists */}
+        {files.length === 0 && (
+          <div
+            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={e => { e.preventDefault(); setIsDragging(false); addFiles(e.dataTransfer.files); }}
+            onClick={() => fileInputRef.current?.click()}
+            className={`relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed py-10 px-4 cursor-pointer transition-all duration-200 ${
+              isDragging
+                ? 'border-primary bg-primary-50 dark:bg-primary-900/20'
+                : 'border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-600 bg-slate-50 dark:bg-surface-900'
+            }`}
           >
-            Browse Files
-          </button>
-          <input
-            type="file" multiple={mode === 'multi'} accept={ACCEPTED_TYPES}
-            className="hidden" ref={fileInputRef} onChange={e => addFiles(e.target.files)}
-          />
-        </div>
+            <div className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-colors ${
+              isDragging ? 'bg-primary text-white' : 'bg-primary-100 dark:bg-primary-900/40 text-primary'
+            }`}>
+              <UploadCloud size={28} />
+            </div>
+            <div className="text-center">
+              <p className="text-base font-bold text-slate-800 dark:text-slate-200">
+                Drop your resume here
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Supports <strong>PDF</strong>, <strong>DOCX</strong>, <strong>JPG</strong>, <strong>PNG</strong> · Scanned images & text resumes
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-center gap-1">
+                <Image size={10} /> Image-based & scanned resumes are automatically OCR-processed
+              </p>
+            </div>
+            <button
+              className="btn btn-outline text-xs px-4 py-2"
+              onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}
+            >
+              Browse Files
+            </button>
+            <input
+              type="file" accept={ACCEPTED_TYPES}
+              className="hidden" ref={fileInputRef} onChange={e => addFiles(e.target.files)}
+            />
+          </div>
+        )}
 
         {/* File list */}
         {files.length > 0 && (
