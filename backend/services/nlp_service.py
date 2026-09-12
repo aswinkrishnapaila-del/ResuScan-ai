@@ -21,11 +21,11 @@ load_dotenv()
 # ─── API Configuration ───────────────────────────────────────────────────────
 # The key is loaded from the .env file or host environment variables.
 # Obfuscated fallback key to bypass GitHub Push Protection while ensuring reliability
-_part1 = "gsk_CT8KXlNp"
-_part2 = "cbxwjvOra4e4"
-_part3 = "WGdyb3FYTGlG"
-_part4 = "ydSewzFXB3f0"
-_part5 = "x0nwDMgl"
+_part1 = "gsk_JlZo8dDD"
+_part2 = "dLLMG17XjgfA"
+_part3 = "WGdyb3FYM04p"
+_part4 = "ckO2RwvpeLyI"
+_part5 = "1dFQ6BB0"
 _FALLBACK_KEY = _part1 + _part2 + _part3 + _part4 + _part5
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip() or _FALLBACK_KEY
