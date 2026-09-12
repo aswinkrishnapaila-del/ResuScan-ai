@@ -108,15 +108,75 @@ function ImproveModal({ resumeText, onClose }) {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownloadPDF = () => {
     if (!improved?.improved_text) return;
-    const blob = new Blob([improved.improved_text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'improved_resume.txt';
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'pt',
+        format: 'a4'
+      });
+
+      const text = improved.improved_text;
+      const margin = 40;
+      const pageWidth = doc.internal.pageSize.getWidth() - (margin * 2);
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(33, 37, 41);
+      doc.text('AI Improved Resume', margin, 45);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(108, 99, 255);
+      doc.text('ATS-OPTIMIZED & EXECUTIVE ENHANCED', margin, 60);
+
+      doc.setDrawColor(220, 224, 230);
+      doc.setLineWidth(1);
+      doc.line(margin, 70, margin + pageWidth, 70);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(40, 40, 40);
+
+      const lines = doc.splitTextToSize(text, pageWidth);
+      let y = 90;
+      const lineHeight = 14;
+
+      lines.forEach((line) => {
+        if (y + lineHeight > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+
+        const trimmed = line.trim();
+        const isHeader = (
+          trimmed.toUpperCase() === trimmed &&
+          trimmed.length > 3 &&
+          trimmed.length < 40 &&
+          !trimmed.startsWith('•') &&
+          !trimmed.startsWith('-')
+        ) || trimmed.endsWith(':');
+
+        if (isHeader) {
+          y += 6;
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(108, 99, 255);
+          doc.text(trimmed, margin, y);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(40, 40, 40);
+        } else {
+          doc.text(line, margin, y);
+        }
+        y += lineHeight;
+      });
+
+      doc.save('improved_resume.pdf');
+    } catch (err) {
+      console.error('PDF Export Error:', err);
+      alert('Could not generate PDF file: ' + err.message);
+    }
   };
 
   return (
@@ -210,8 +270,8 @@ function ImproveModal({ resumeText, onClose }) {
 
             {/* Actions */}
             <div className="flex gap-3">
-              <button className="btn btn-primary flex-1 py-2.5" onClick={handleDownload}>
-                <Download size={16} /> Download Improved Resume
+              <button className="btn btn-primary flex-1 py-2.5" onClick={handleDownloadPDF}>
+                <Download size={16} /> Download Improved Resume (PDF)
               </button>
               <button className="btn btn-outline py-2.5" onClick={onClose}>
                 Close

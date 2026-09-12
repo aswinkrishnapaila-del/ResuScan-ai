@@ -51,4 +51,22 @@ print(f'[JOB SUGGESTIONS] {"PASS" if ok else "FAIL"}')
 if ok:
     print(f'  Job 1: {jobs[0].get("title")} at {jobs[0].get("company")}')
 
+# 6. Improve Resume
+sample_resume = "John Doe. Software Developer with 3 years of experience. Worked on Python and React projects. Created APIs and fixed bugs."
+r = requests.post(f'{BASE}/improve-resume', json={'resume_text': sample_resume})
+d_imp = r.json()
+ok_imp = bool(d_imp.get('improved_text'))
+print(f'[IMPROVE RESUME] {"PASS" if ok_imp else "FAIL"}')
+print(f'  Fixes: {d_imp.get("grammar_fixes")}, Impact Boosts: {d_imp.get("impact_boosts")}')
+
+# 7. Mock Test Jumbling
+r1 = requests.post(f'{BASE}/mock-test', json={'category': 'technical', 'company_type': 'product'})
+r2 = requests.post(f'{BASE}/mock-test', json={'category': 'technical', 'company_type': 'product'})
+q1 = r1.json().get('questions', [])
+q2 = r2.json().get('questions', [])
+ok_test = len(q1) == 15 and len(q2) == 15
+print(f'[MOCK TEST JUMBLING] {"PASS" if ok_test else "FAIL"}')
+print(f'  Test 1 First Question: {q1[0].get("question") if q1 else "None"}')
+print(f'  Test 2 First Question: {q2[0].get("question") if q2 else "None"}')
+
 print('\nAll tests done.')

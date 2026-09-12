@@ -11,6 +11,7 @@ backend/.env
 # Dev-only scripts (not needed in production)
 backend/create_sample.py
 backend/test_pdf.py
+frontend/*.py
 
 # Frontend build artifacts
 frontend/node_modules/

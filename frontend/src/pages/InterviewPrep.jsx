@@ -21,6 +21,10 @@ const CATEGORIES = [
 const COMPANY_TYPES = [
   { id: 'product', label: 'Product-Based', icon: Rocket, desc: 'Google, Amazon, Microsoft, Flipkart' },
   { id: 'service', label: 'Service-Based', icon: Building2, desc: 'TCS, Infosys, Wipro, Cognizant' },
+  { id: 'startup', label: 'Startup', icon: Sparkles, desc: 'Early-stage, Series A-C Companies' },
+  { id: 'mnc', label: 'MNC', icon: Target, desc: 'IBM, Oracle, SAP, Siemens' },
+  { id: 'government', label: 'Govt / PSU', icon: GraduationCap, desc: 'ISRO, DRDO, BSNL, Railways' },
+  { id: 'consulting', label: 'Consulting', icon: BarChart2, desc: 'Deloitte, McKinsey, Accenture' },
 ];
 
 /* ── Difficulty Badge ─────────────────────────────────────────── */
@@ -37,10 +41,59 @@ function DifficultyBadge({ level }) {
   );
 }
 
+/* ── Question & Option Jumbling Helpers ────────────────────────── */
+function shuffleArray(arr) {
+  if (!Array.isArray(arr)) return arr;
+  const newArr = [...arr];
+  for (let i = newArr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+  }
+  return newArr;
+}
+
+function jumbleTestData(data) {
+  if (!data || !Array.isArray(data.questions)) return data;
+  const questionsCopy = data.questions.map(q => {
+    const opts = Array.isArray(q.options) ? [...q.options] : [];
+    const correctIdx = q.correct ?? 0;
+    const correctVal = opts[correctIdx] || '';
+
+    const cleanOpts = opts.map(o => String(o).replace(/^[A-D]\)\s*/, ''));
+    const cleanCorrectVal = String(correctVal).replace(/^[A-D]\)\s*/, '');
+
+    const shuffledClean = shuffleArray(cleanOpts);
+    const labels = ['A) ', 'B) ', 'C) ', 'D) '];
+    const formattedOpts = shuffledClean.map((o, idx) => `${labels[idx] || ''}${o}`);
+    const newCorrectIdx = shuffledClean.indexOf(cleanCorrectVal);
+
+    return {
+      ...q,
+      options: formattedOpts,
+      correct: newCorrectIdx >= 0 ? newCorrectIdx : 0
+    };
+  });
+
+  return {
+    ...data,
+    questions: shuffleArray(questionsCopy)
+  };
+}
+
 /* ── Questions View ───────────────────────────────────────────── */
 function QuestionsView({ questions, category, onBack, onStartTest, isLoadingTest }) {
   const [expandedId, setExpandedId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState('all');
+
   const catConfig = CATEGORIES.find(c => c.id === category) || CATEGORIES[0];
+
+  const filteredQuestions = questions.filter(q => {
+    const matchesSearch = (q.question || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (q.answer || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDiff = difficultyFilter === 'all' || (q.difficulty || 'medium').toLowerCase() === difficultyFilter.toLowerCase();
+    return matchesSearch && matchesDiff;
+  });
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
@@ -53,70 +106,105 @@ function QuestionsView({ questions, category, onBack, onStartTest, isLoadingTest
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <catConfig.icon size={20} style={{ color: catConfig.color }} />
-              {catConfig.label} Interview Questions
+              {catConfig.label} Practice & Prep Hub
             </h2>
-            <p className="text-xs text-slate-400">{questions.length} important questions to prepare</p>
+            <p className="text-xs text-slate-400">Study model answers and key concepts before attempting the timed test</p>
           </div>
         </div>
         <button className="btn btn-primary text-xs px-4 py-2" onClick={onStartTest} disabled={isLoadingTest}>
           {isLoadingTest
             ? <><Loader2 size={14} className="spin" /> Generating Test...</>
-            : <><ClipboardCheck size={14} /> Take Mock Test (10 MCQs)</>
+            : <><ClipboardCheck size={14} /> Start Timed Mock Test (15 MCQs)</>
           }
         </button>
       </div>
 
+      {/* Filter and Search Bar */}
+      <div className="card dark:bg-surface-800 p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <input
+            type="text"
+            placeholder="Search questions or keywords..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full sm:w-72 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-surface-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-violet-500"
+          />
+          <div className="flex items-center gap-1.5 self-start sm:self-auto">
+            <span className="text-xs text-slate-400 font-medium mr-1">Difficulty:</span>
+            {['all', 'easy', 'medium', 'hard'].map(level => (
+              <button
+                key={level}
+                onClick={() => setDifficultyFilter(level)}
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg capitalize transition-all ${
+                  difficultyFilter === level
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                {level}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Questions */}
       <div className="space-y-3">
-        {questions.map((q, i) => (
-          <div
-            key={q.id || i}
-            className="card dark:bg-surface-800 cursor-pointer hover:shadow-md transition-all"
-            onClick={() => setExpandedId(expandedId === q.id ? null : q.id)}
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
-                   style={{ background: catConfig.color }}>
-                {i + 1}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{q.question}</p>
-                  <DifficultyBadge level={q.difficulty} />
+        {filteredQuestions.length > 0 ? (
+          filteredQuestions.map((q, i) => (
+            <div
+              key={q.id || i}
+              className="card dark:bg-surface-800 cursor-pointer hover:shadow-md transition-all"
+              onClick={() => setExpandedId(expandedId === q.id ? null : q.id)}
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+                     style={{ background: catConfig.color }}>
+                  {i + 1}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{q.question}</p>
+                    <DifficultyBadge level={q.difficulty} />
+                  </div>
 
-                <AnimatePresence>
-                  {expandedId === q.id && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-3 space-y-3">
-                        <div className="rounded-xl bg-slate-50 dark:bg-surface-950 border border-slate-200 dark:border-slate-700 p-4">
-                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1.5">💡 Model Answer</p>
-                          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{q.answer}</p>
-                        </div>
-                        {q.tip && (
-                          <div className="flex gap-2 items-start rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 p-3">
-                            <Lightbulb size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-amber-700 dark:text-amber-400">{q.tip}</p>
+                  <AnimatePresence>
+                    {expandedId === q.id && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-3 space-y-3">
+                          <div className="rounded-xl bg-slate-50 dark:bg-surface-950 border border-slate-200 dark:border-slate-700 p-4">
+                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1.5">💡 Model Answer</p>
+                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{q.answer}</p>
                           </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                          {q.tip && (
+                            <div className="flex gap-2 items-start rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 p-3">
+                              <Lightbulb size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                              <p className="text-xs text-amber-700 dark:text-amber-400">{q.tip}</p>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                <p className="text-[10px] text-slate-400 mt-1.5">
-                  {expandedId === q.id ? 'Click to collapse' : 'Click to see model answer'}
-                </p>
+                  <p className="text-[10px] text-slate-400 mt-1.5">
+                    {expandedId === q.id ? 'Click to collapse' : 'Click to see model answer'}
+                  </p>
+                </div>
               </div>
             </div>
+          ))
+        ) : (
+          <div className="text-center py-8 text-slate-400">
+            <p className="text-sm">No practice questions found matching your filter criteria.</p>
           </div>
-        ))}
+        )}
       </div>
     </motion.div>
   );
@@ -127,51 +215,44 @@ function MockTestView({ testData, onBack, onRetake }) {
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(45);
+  const [timeLeft, setTimeLeft] = useState(900); // 15 minutes = 900 seconds
   const timerRef = useRef(null);
 
   const questions = testData?.questions || [];
   const total = questions.length;
   const q = questions[currentQ];
 
-  // Timer
+  // Single 15-minute timer for the entire test
   useEffect(() => {
     if (showResults) return;
-    setTimeLeft(45);
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
-          // Auto-advance on timeout
           clearInterval(timerRef.current);
-          if (currentQ < total - 1) {
-            setCurrentQ(c => c + 1);
-          } else {
-            setShowResults(true);
-          }
-          return 45;
+          setShowResults(true);
+          return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [currentQ, showResults]);
+  }, [showResults]);
 
   const selectAnswer = (optIdx) => {
     setAnswers(prev => ({ ...prev, [currentQ]: optIdx }));
   };
 
   const nextQuestion = () => {
-    clearInterval(timerRef.current);
     if (currentQ < total - 1) {
       setCurrentQ(c => c + 1);
     } else {
+      clearInterval(timerRef.current);
       setShowResults(true);
     }
   };
 
   const prevQuestion = () => {
     if (currentQ > 0) {
-      clearInterval(timerRef.current);
       setCurrentQ(c => c - 1);
     }
   };
@@ -272,7 +353,9 @@ function MockTestView({ testData, onBack, onRetake }) {
   if (!q) return null;
 
   const progress = ((currentQ + 1) / total) * 100;
-  const timerColor = timeLeft <= 10 ? 'text-red-500' : timeLeft <= 20 ? 'text-amber-500' : 'text-slate-500 dark:text-slate-400';
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+  const timerColor = timeLeft <= 60 ? 'text-red-500' : timeLeft <= 180 ? 'text-amber-500' : 'text-slate-500 dark:text-slate-400';
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
@@ -283,7 +366,7 @@ function MockTestView({ testData, onBack, onRetake }) {
             Question {currentQ + 1} of {total}
           </span>
           <span className={`flex items-center gap-1 font-bold ${timerColor}`}>
-            <Clock size={13} /> {timeLeft}s
+            <Clock size={13} /> {minutes}:{seconds.toString().padStart(2, '0')}
           </span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
@@ -335,7 +418,7 @@ function MockTestView({ testData, onBack, onRetake }) {
         {questions.map((_, i) => (
           <button
             key={i}
-            onClick={() => { clearInterval(timerRef.current); setCurrentQ(i); }}
+            onClick={() => setCurrentQ(i)}
             className={`h-3 w-3 rounded-full transition-all ${
               i === currentQ
                 ? 'bg-primary scale-125'
@@ -400,7 +483,7 @@ export default function InterviewPrep() {
         category,
         company_type: companyType,
       }, { timeout: 60000 });
-      setTestData(res.data);
+      setTestData(jumbleTestData(res.data));
       setStep('test');
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Failed to generate mock test');

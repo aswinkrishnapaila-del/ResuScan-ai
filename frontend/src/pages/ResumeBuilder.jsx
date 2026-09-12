@@ -572,37 +572,10 @@ export default function ResumeBuilder({ loadedDraft, setLoadedDraft }) {
     alert('Draft saved successfully!');
   };
 
-  const handleExportPDF = async () => {
-    try {
-      const exportData = { ...formData };
-      delete exportData.skillInput;
-      const response = await fetch(`${API_BASE}/generate-resume`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(exportData)
-      });
-      if (!response.ok) {
-        const errText = await response.text().catch(() => '');
-        throw new Error(`Server error ${response.status}: ${errText.slice(0, 200)}`);
-      }
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.includes('pdf')) {
-        throw new Error('Server did not return a valid PDF. Use Print instead.');
-      }
-      const blob = await response.blob();
-      if (blob.size < 100) throw new Error('PDF is empty.');
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${(formData.name || 'resume').replace(/\s+/g, '_').toLowerCase()}_resume.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('PDF export error:', error);
-      if (window.confirm(`PDF export failed: ${error.message}\n\nUse browser Print instead?`)) handlePrint();
-    }
+  const handleExportPDF = () => {
+    // We use browser native print to generate the PDF so that the exact 
+    // React template and styling are preserved and text remains ATS-readable.
+    handlePrint();
   };
 
   /* ── STEP PREVIEW PANEL PROPS ── */

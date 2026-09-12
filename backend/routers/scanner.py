@@ -268,7 +268,7 @@ async def get_interview_questions(request: InterviewQuestionsRequest):
 @router.post("/mock-test")
 async def get_mock_test(request: MockTestRequest):
     """
-    Generate a 10-question MCQ mock test for interview preparation.
+    Generate a 15-question MCQ mock test for interview preparation.
     """
     valid_categories = ["technical", "non-technical", "aptitude", "reasoning"]
     if request.category not in valid_categories:
