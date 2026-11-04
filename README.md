@@ -1,13 +1,13 @@
 # 🚀 ResuScan AI
 
-ResuScan AI is an intelligent, full-stack application designed to help job seekers build, optimize, and scan their resumes against Job Descriptions (JD). Powered by Google Gemini AI, it provides real-time feedback, ATS optimization suggestions, and a beautiful live-preview resume builder.
+ResuScan AI is an intelligent, full-stack application designed to help job seekers build, optimize, and scan their resumes against Job Descriptions (JD). Powered by the Groq AI API, it provides real-time feedback, ATS optimization suggestions, and a beautiful live-preview resume builder.
 
 ---
 
 ## ✨ Features
 
-*   **Intelligent Resume Builder**: A real-time, live-preview builder with 11+ professional, ATS-friendly templates (Minimalist, Executive, Modern, Creative, Tech, etc.).
-*   **AI Resume Scanner**: Upload your existing PDF resume and let Gemini AI analyze your strengths, weaknesses, and overall ATS score.
+*   **Intelligent Resume Builder**: A real-time, live-preview builder with 14 professional, ATS-friendly templates (Minimalist, Executive, Modern, Creative, Tech, etc.).
+*   **AI Resume Scanner**: Upload your existing PDF resume and let Groq AI analyze your strengths, weaknesses, and overall ATS score.
 *   **JD Matcher (Job Description Analysis)**: Paste a Job Description, and the AI will analyze the core skills required, suggest matching resume tweaks, and recommend certifications.
 *   **Smart Form Inputs**: Includes a worldwide location autocomplete (via Nominatim), a searchable international phone code dropdown, and smart job title suggestions.
 *   **Export to PDF**: Generate high-quality, pixel-perfect PDF resumes instantly.
@@ -25,8 +25,9 @@ ResuScan AI is an intelligent, full-stack application designed to help job seeke
 **Backend:**
 *   Python (FastAPI)
 *   Uvicorn
-*   Google Generative AI (Gemini Flash 2.5)
+*   Groq API (openai/gpt-oss & qwen models)
 *   PyPDF2 & pypdf (PDF Extraction)
+*   Tesseract OCR (scanned PDFs & images)
 
 **Database & Auth:**
 *   Supabase (PostgreSQL)
@@ -40,7 +41,7 @@ Follow these steps to run ResuScan AI locally on your machine.
 ### Prerequisites
 *   Node.js (v18+)
 *   Python (v3.9+)
-*   API Keys for Google Gemini and Supabase
+*   API Keys for Groq and Supabase
 
 ### 1. Clone the repository
 ```bash
@@ -64,11 +65,12 @@ pip install -r requirements.txt
 
 Create a `.env` file in the `backend/` directory with your API keys:
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_API_KEY_2=your_second_gemini_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_KEY=your_supabase_anon_key
 ```
+
+> If `SUPABASE_URL`/`SUPABASE_KEY` are omitted, the backend still starts; database-backed profile features are simply disabled.
 
 Start the backend server:
 ```bash
@@ -83,7 +85,16 @@ npm install
 npm run dev
 ```
 
+Create a `.env` file in the `frontend/` directory:
+```env
+VITE_API_BASE=http://localhost:8000/api
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
 The frontend will run at `http://localhost:5173/` and connect to the backend at `http://localhost:8000/`.
+
+> **Windows note:** if `npm run dev` fails with *"npm.ps1 cannot be loaded because running scripts is disabled"*, either run `npm.cmd run dev`, or enable scripts once in PowerShell with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
 ---
 

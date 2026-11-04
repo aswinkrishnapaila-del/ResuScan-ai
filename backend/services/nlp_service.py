@@ -3,6 +3,7 @@ import json
 import re
 import os
 import random
+import shutil
 import logging
 import requests
 from typing import List, Dict, Any
@@ -19,25 +20,34 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # ─── API Configuration ───────────────────────────────────────────────────────
-# The key is loaded from the .env file or host environment variables.
-# Obfuscated fallback key to bypass GitHub Push Protection while ensuring reliability
-_part1 = "gsk_JlZo8dDD"
-_part2 = "dLLMG17XjgfA"
-_part3 = "WGdyb3FYM04p"
-_part4 = "ckO2RwvpeLyI"
-_part5 = "1dFQ6BB0"
-_FALLBACK_KEY = _part1 + _part2 + _part3 + _part4 + _part5
-
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip() or _FALLBACK_KEY
+# Keys must come from the .env file or host environment variables.
+# (Never hardcode API keys in source — rotate any key that has ever been committed.)
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 
-# Model priority — ordered by reliability and speed. Uses active Groq models.
+# Google Gemini API
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+GEMINI_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+
+# Ollama cloud — OpenAI-compatible endpoint. Falls back to Groq when unavailable.
+# Get a key at https://ollama.com/settings/keys
+OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY", "").strip()
+OLLAMA_ENDPOINT = "https://ollama.com/v1/chat/completions"
+
+# Groq model priority — qwen is tried first (reliable content output).
+# openai/gpt-oss models sometimes return empty content, kept as fallback.
 MODEL_PRIORITY = [
-    "groq/compound",
-    "groq/compound-mini",
-    "qwen/qwen3.6-27b",
-    "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
     "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+]
+
+# Ollama cloud model priority — free tier starts with gemma4:cloud.
+# Cloud model names use their API form (not the :cloud CLI suffix).
+OLLAMA_MODEL_PRIORITY = [
+    "gemma4:27b",
+    "gemma4:12b",
+    "gemma4:4b",
 ]
 
 # ─── Skill Taxonomy ──────────────────────────────────────────────────────────
@@ -82,6 +92,62 @@ WEAK_PASSIVE_PHRASES = [
 STANDARD_SECTIONS = ["experience", "education", "skills", "projects"]
 
 
+# ─── Google Gemini API Client ────────────────────────────────────────────────
+def _call_gemini(
+    prompt: str,
+    system_prompt: str = "You are an expert ATS resume reviewer and senior technical recruiter with 20+ years at FAANG. Be brutally honest, specific, and evidence-based.",
+    expect_json: bool = False,
+    max_tokens: int = 2048,
+    temperature: float = 0.25,
+) -> str:
+    """
+    Call Google Gemini REST API with GEMINI_API_KEY.
+    """
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY is not configured.")
+
+    errors = []
+    for model in GEMINI_MODELS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+        
+        system_part = f"{system_prompt}\n\n" if system_prompt else ""
+        combined_prompt = f"{system_part}{prompt}"
+        
+        payload = {
+            "contents": [{
+                "parts": [{"text": combined_prompt}]
+            }],
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+            }
+        }
+        if expect_json:
+            payload["generationConfig"]["responseMimeType"] = "application/json"
+
+        try:
+            res = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=25)
+            if res.status_code == 200:
+                data = res.json()
+                candidates = data.get("candidates", [])
+                if candidates and "content" in candidates[0]:
+                    parts = candidates[0]["content"].get("parts", [])
+                    if parts and "text" in parts[0]:
+                        content = parts[0]["text"].strip()
+                        if content:
+                            logger.info(f"[Gemini] model={model} raw_len={len(content)}")
+                            return content
+                errors.append(f"{model}: empty candidates")
+            else:
+                logger.warning(f"[Gemini] HTTP {res.status_code} model={model}: {res.text[:140]}")
+                errors.append(f"{model}: HTTP {res.status_code}")
+        except Exception as e:
+            logger.error(f"[Gemini] Exception model={model}: {e}")
+            errors.append(f"{model}: {str(e)}")
+
+    raise RuntimeError(f"All Gemini models failed: {errors}")
+
+
 # ─── Groq API Client ─────────────────────────────────────────────────────────
 def _call_groq(
     prompt: str,
@@ -93,9 +159,16 @@ def _call_groq(
     """
     Call Groq API with automatic model fallback.
     Tries each model in MODEL_PRIORITY until one succeeds.
+    If GEMINI_API_KEY is provided, tries Gemini first and gracefully falls back to Groq.
     """
+    if GEMINI_API_KEY:
+        try:
+            return _call_gemini(prompt, system_prompt, expect_json, max_tokens, temperature)
+        except Exception as ge:
+            logger.info(f"[AI] Gemini attempt ({ge}) falling back to Groq...")
+
     if not GROQ_API_KEY:
-        raise RuntimeError("GROQ_API_KEY is not configured.")
+        raise RuntimeError("Neither GEMINI_API_KEY nor GROQ_API_KEY succeeded.")
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -119,9 +192,16 @@ def _call_groq(
         try:
             res = requests.post(GROQ_ENDPOINT, headers=headers, json=payload, timeout=60)
             if res.status_code == 200:
-                raw_content = res.json()["choices"][0]["message"]["content"]
-                content = raw_content.strip() if raw_content else ""
+                msg = res.json()["choices"][0]["message"]
+                raw_content = msg.get("content") or ""
+                content = raw_content.strip()
                 logger.info(f"[Groq] model={model} raw_len={len(content)}")
+
+                # Some reasoning models return empty content — skip to next model
+                if not content:
+                    logger.warning(f"[Groq] model={model} returned empty content, trying next model")
+                    errors.append(f"{model}: empty content")
+                    continue
 
                 if expect_json:
                     cleaned = _clean_json(content)
@@ -131,14 +211,18 @@ def _call_groq(
                         continue
 
                 return content
-            elif res.status_code == 400 and "response_format" in str(res.text):
-                # Model doesn't support json_object — retry without it
+            elif res.status_code == 400 and ("response_format" in str(res.text) or "'messages' must contain the word 'json'" in str(res.text)):
+                # Some models require the word 'json' in messages when using json_object format.
+                # Retry without response_format — the prompt already asks for JSON output.
                 payload.pop("response_format", None)
                 res2 = requests.post(GROQ_ENDPOINT, headers=headers, json=payload, timeout=60)
                 if res2.status_code == 200:
-                    content = (res2.json()["choices"][0]["message"]["content"] or "").strip()
+                    content = (res2.json()["choices"][0]["message"].get("content") or "").strip()
                     logger.info(f"[Groq] model={model} (no json_mode) raw_len={len(content)}")
-                    return content
+                    if content:
+                        return content
+                    errors.append(f"{model}: empty content after json_mode retry")
+                    continue
                 errors.append(f"{model}: HTTP {res2.status_code}")
             else:
                 logger.warning(f"[Groq] HTTP {res.status_code} model={model}: {res.text[:200]}")
@@ -148,6 +232,96 @@ def _call_groq(
             errors.append(f"{model}: {str(e)}")
 
     raise RuntimeError(f"All Groq models failed: {errors}")
+
+
+# ─── Ollama Cloud API Client ──────────────────────────────────────────────────
+def _call_ollama(
+    prompt: str,
+    system_prompt: str = "You are an expert ATS resume reviewer and senior technical recruiter with 20+ years at FAANG. Be brutally honest, specific, and evidence-based.",
+    expect_json: bool = False,
+    max_tokens: int = 2048,
+    temperature: float = 0.25,
+) -> str:
+    """
+    Call Ollama's OpenAI-compatible cloud API with automatic model fallback.
+    Requires OLLAMA_API_KEY in the environment.
+    """
+    if not OLLAMA_API_KEY or OLLAMA_API_KEY == "your_ollama_api_key_here":
+        raise RuntimeError("OLLAMA_API_KEY is not configured.")
+
+    headers = {
+        "Authorization": f"Bearer {OLLAMA_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    errors = []
+
+    for model in OLLAMA_MODEL_PRIORITY:
+        payload: dict = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+
+        try:
+            res = requests.post(OLLAMA_ENDPOINT, headers=headers, json=payload, timeout=60)
+            if res.status_code == 200:
+                raw_content = res.json()["choices"][0]["message"]["content"]
+                content = raw_content.strip() if raw_content else ""
+                logger.info(f"[Ollama] model={model} raw_len={len(content)}")
+
+                if expect_json:
+                    cleaned = _clean_json(content)
+                    if not cleaned or cleaned in ('{}', '[]', ''):
+                        logger.warning(f"[Ollama] model={model} returned empty JSON, skipping")
+                        errors.append(f"{model}: empty JSON after clean")
+                        continue
+
+                return content
+            else:
+                logger.warning(f"[Ollama] HTTP {res.status_code} model={model}: {res.text[:200]}")
+                errors.append(f"{model}: HTTP {res.status_code}")
+        except Exception as e:
+            logger.error(f"[Ollama] Exception model={model}: {e}")
+            errors.append(f"{model}: {str(e)}")
+
+    raise RuntimeError(f"All Ollama models failed: {errors}")
+
+
+# ─── Unified AI Dispatcher ────────────────────────────────────────────────────
+def _call_ai(
+    prompt: str,
+    system_prompt: str = "You are an expert ATS resume reviewer and senior technical recruiter with 20+ years at FAANG. Be brutally honest, specific, and evidence-based.",
+    expect_json: bool = False,
+    max_tokens: int = 2048,
+    temperature: float = 0.25,
+) -> str:
+    """
+    Unified AI caller: tries Groq first, then falls back to Ollama cloud.
+    Use this for all new AI calls to get automatic provider redundancy.
+    Existing direct _call_groq() calls continue to work unchanged.
+    """
+    groq_ok = bool(GROQ_API_KEY)
+    ollama_ok = bool(OLLAMA_API_KEY and OLLAMA_API_KEY != "your_ollama_api_key_here")
+
+    if groq_ok:
+        try:
+            return _call_groq(prompt, system_prompt, expect_json, max_tokens, temperature)
+        except RuntimeError as e:
+            logger.warning(f"[AI] Groq failed, trying Ollama fallback: {e}")
+            if ollama_ok:
+                return _call_ollama(prompt, system_prompt, expect_json, max_tokens, temperature)
+            raise
+    elif ollama_ok:
+        return _call_ollama(prompt, system_prompt, expect_json, max_tokens, temperature)
+    else:
+        raise RuntimeError(
+            "No AI provider is configured. "
+            "Set GROQ_API_KEY or OLLAMA_API_KEY in your .env file."
+        )
 
 
 def _clean_json(text: str) -> str:
@@ -199,21 +373,69 @@ def _clean_json(text: str) -> str:
 
 # ─── Text Extraction ─────────────────────────────────────────────────────────
 def extract_text_from_pdf(file_bytes: bytes) -> str:
-    """Extract text from PDF with PyPDF2, then OCR fallback for scanned PDFs."""
+    """
+    Extract text from a PDF using a robust 3-tier strategy:
+      1. PyMuPDF (fitz) — handles most modern and unusual PDFs
+      2. pdfplumber    — better at complex layouts and tables
+      3. PyPDF2        — legacy fallback
+      4. OCR (Tesseract via PyMuPDF render) — for scanned / image-only PDFs
+    """
     text = ""
 
-    # --- Attempt 1: PyPDF2 direct text extraction ---
+    # ── Attempt 1: PyMuPDF (most robust) ─────────────────────────────────────
     try:
-        reader = PdfReader(io.BytesIO(file_bytes))
-        for page in reader.pages:
-            try:
-                extracted = page.extract_text()
-                if extracted:
-                    text += extracted + "\n"
-            except Exception:
-                pass
+        import fitz  # PyMuPDF
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        parts = []
+        for page in doc:
+            page_text = page.get_text("text")
+            if page_text and page_text.strip():
+                parts.append(page_text.strip())
+        doc.close()
+        text = "\n\n".join(parts)
+        logger.info(f"[PDF] PyMuPDF extracted {len(text)} chars")
+    except ImportError:
+        logger.warning("[PDF] PyMuPDF not available, trying pdfplumber")
     except Exception as e:
-        logger.warning(f"PyPDF2 failed: {e}")
+        logger.warning(f"[PDF] PyMuPDF failed: {e}")
+
+    # ── Attempt 2: pdfplumber (better table/layout handling) ─────────────────
+    if not text.strip() or len(text.strip()) < 30:
+        try:
+            import pdfplumber
+            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+                parts = []
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text and page_text.strip():
+                        parts.append(page_text.strip())
+                candidate = "\n\n".join(parts)
+                if len(candidate.strip()) > len(text.strip()):
+                    text = candidate
+            logger.info(f"[PDF] pdfplumber extracted {len(text)} chars")
+        except ImportError:
+            logger.warning("[PDF] pdfplumber not available, trying PyPDF2")
+        except Exception as e:
+            logger.warning(f"[PDF] pdfplumber failed: {e}")
+
+    # ── Attempt 3: PyPDF2 (legacy fallback) ──────────────────────────────────
+    if not text.strip() or len(text.strip()) < 30:
+        try:
+            reader = PdfReader(io.BytesIO(file_bytes))
+            parts = []
+            for page in reader.pages:
+                try:
+                    extracted = page.extract_text()
+                    if extracted and extracted.strip():
+                        parts.append(extracted.strip())
+                except Exception:
+                    pass
+            candidate = "\n".join(parts)
+            if len(candidate.strip()) > len(text.strip()):
+                text = candidate
+            logger.info(f"[PDF] PyPDF2 extracted {len(text)} chars")
+        except Exception as e:
+            logger.warning(f"[PDF] PyPDF2 failed: {e}")
 
     # Normalize whitespace
     text = re.sub(r'[ \t]{2,}', ' ', text)
@@ -223,27 +445,94 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     if text.strip() and len(text.strip()) >= 30:
         return text.strip()
 
-    # --- Attempt 2: OCR fallback for scanned PDFs ---
+    # ── Attempt 4: OCR fallback for scanned / image-only PDFs ────────────────
     logger.info("[PDF] Text extraction yielded <30 chars, attempting OCR...")
     ocr_text = _ocr_pdf(file_bytes)
     if ocr_text and len(ocr_text.strip()) >= 30:
         return ocr_text.strip()
 
-    # Both methods failed
+    # All methods failed
     if text.strip():
-        return text.strip()  # Return whatever we got
+        return text.strip()  # Return whatever partial text we got
 
     raise ValueError(
         "Could not extract text from this PDF. "
-        "It may be a blank or corrupted file. "
-        "Please try uploading a different resume file."
+        "The file may be password-protected, completely image-based, or corrupted. "
+        "Please try: (1) a DOCX version, (2) a higher-resolution scan, or "
+        "(3) copy-paste the resume text directly."
     )
 
 
-def _ocr_pdf(file_bytes: bytes) -> str:
-    """Convert PDF pages to images and OCR them using pytesseract."""
+# ─── Tesseract OCR discovery ─────────────────────────────────────────────────
+_TESSERACT_PATH: Optional[str] = None
+_TESSERACT_RESOLVED = False
+
+
+def _configure_tesseract() -> Optional[str]:
+    """
+    Locate the Tesseract OCR binary and point pytesseract at it.
+
+    Resolution order:
+      1. TESSERACT_CMD environment variable
+      2. Common install locations (Windows / macOS / Linux)
+      3. The system PATH
+
+    Returns the resolved path, or None when Tesseract is unavailable.
+    The result is cached so lookups only happen once per process.
+    """
+    global _TESSERACT_PATH, _TESSERACT_RESOLVED
+    if _TESSERACT_RESOLVED:
+        return _TESSERACT_PATH
+
+    _TESSERACT_RESOLVED = True
     try:
-        from pdf2image import convert_from_bytes
+        import pytesseract
+    except ImportError:
+        logger.warning("[OCR] pytesseract is not installed — OCR disabled.")
+        _TESSERACT_PATH = None
+        return None
+
+    candidates: List[str] = []
+    env_cmd = os.environ.get("TESSERACT_CMD", "").strip()
+    if env_cmd:
+        candidates.append(env_cmd)
+
+    local_appdata = os.environ.get("LOCALAPPDATA", "")
+    candidates += [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        os.path.join(local_appdata, "Programs", "Tesseract-OCR", "tesseract.exe"),
+        os.path.join(local_appdata, "Tesseract-OCR", "tesseract.exe"),
+        "/usr/bin/tesseract",
+        "/usr/local/bin/tesseract",
+        "/opt/homebrew/bin/tesseract",
+    ]
+
+    which = shutil.which("tesseract")
+    if which:
+        candidates.append(which)
+
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate):
+            pytesseract.pytesseract.tesseract_cmd = candidate
+            _TESSERACT_PATH = candidate
+            logger.info(f"[OCR] Using Tesseract at {candidate}")
+            return candidate
+
+    logger.warning(
+        "[OCR] Tesseract binary not found — image/scanned-resume OCR is unavailable. "
+        "Install it (https://tesseract-ocr.github.io) or set TESSERACT_CMD."
+    )
+    _TESSERACT_PATH = None
+    return None
+
+
+def _ocr_pdf(file_bytes: bytes) -> str:
+    """Render PDF pages to images (PyMuPDF, no Poppler needed) and OCR them."""
+    if not _configure_tesseract():
+        return ""
+    try:
+        import fitz  # PyMuPDF
         import pytesseract
         from PIL import Image
     except ImportError as e:
@@ -251,24 +540,31 @@ def _ocr_pdf(file_bytes: bytes) -> str:
         return ""
 
     try:
-        # Convert PDF pages to images (limit to first 10 pages for performance)
-        images = convert_from_bytes(file_bytes, dpi=300, first_page=1, last_page=10)
-        text_parts = []
-        for i, img in enumerate(images):
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+    except Exception as e:
+        logger.warning(f"[OCR] Could not open PDF for OCR: {e}")
+        return ""
+
+    text_parts: List[str] = []
+    try:
+        for i, page in enumerate(doc):
+            if i >= 10:  # limit to the first 10 pages for performance
+                break
             try:
-                page_text = pytesseract.image_to_string(img, lang='eng')
+                pix = page.get_pixmap(dpi=300)
+                img = Image.open(io.BytesIO(pix.tobytes("png")))
+                page_text = pytesseract.image_to_string(img, lang="eng")
                 if page_text and page_text.strip():
                     text_parts.append(page_text.strip())
             except Exception as e:
-                logger.warning(f"[OCR] Failed on page {i+1}: {e}")
+                logger.warning(f"[OCR] Failed on page {i + 1}: {e}")
+    finally:
+        doc.close()
 
-        full_text = "\n\n".join(text_parts)
-        full_text = re.sub(r'[ \t]{2,}', ' ', full_text)
-        full_text = re.sub(r'\n{3,}', '\n\n', full_text)
-        return full_text.strip()
-    except Exception as e:
-        logger.warning(f"[OCR] PDF OCR failed: {e}")
-        return ""
+    full_text = "\n\n".join(text_parts)
+    full_text = re.sub(r'[ \t]{2,}', ' ', full_text)
+    full_text = re.sub(r'\n{3,}', '\n\n', full_text)
+    return full_text.strip()
 
 
 def extract_text_from_image(file_bytes: bytes) -> str:
@@ -1287,19 +1583,54 @@ Make the jobs varied — mix of startups, MNCs, and product companies. Use REAL 
         ]
 
 
-# ─── JD Analyzer (legacy stub — kept for any existing callers) ───────────────
+# ─── JD Analyzer ─────────────────────────────────────────────────────────────
 def analyze_jd_with_gemini(jd_text: str) -> Dict[str, Any]:
-    """Kept for backward compatibility. Returns minimal data."""
+    """Analyze a job description and return structured, actionable insights."""
     from urllib.parse import quote_plus
-    return {
-        "role_title": "See ATS Scanner results",
-        "key_skills_required": [],
-        "experience_level": "Not specified",
-        "suggestions": ["Use the ATS Resume Scanner for comprehensive analysis."],
-        "how_to_start": ["Upload your resume to the ATS Scanner above."],
-        "skills_to_learn": [],
-        "certifications": [],
-        "similar_jobs": [
-            {"title": "Software Engineer", "company": "Various", "url": f"https://www.linkedin.com/jobs/search/?keywords={quote_plus('Software Engineer')}&location=India"},
-        ],
-    }
+
+    prompt = f"""Analyze this job description and return a single JSON object with exactly these keys:
+- role_title (string: the job title being hired for)
+- key_skills_required (array of strings: the most important required skills)
+- experience_level (string: e.g. "Entry level", "2-4 years", "Senior", or "Not specified")
+- suggestions (array of 3-4 strings: resume tweaks to better match this role)
+- how_to_start (array of 3-4 strings: concrete preparation steps for the candidate)
+- skills_to_learn (array of strings: skills the JD wants that a typical candidate may lack)
+- certifications (array of strings: relevant certifications worth pursuing)
+
+Job Description:
+{jd_text[:4000]}"""
+
+    try:
+        raw = _call_groq(prompt, expect_json=True)
+        data = json.loads(_clean_json(raw))
+        if not isinstance(data, dict) or not data.get("role_title"):
+            raise ValueError("Invalid JD analysis format")
+
+        data.setdefault("key_skills_required", [])
+        data.setdefault("experience_level", "Not specified")
+        data.setdefault("suggestions", [])
+        data.setdefault("how_to_start", [])
+        data.setdefault("skills_to_learn", [])
+        data.setdefault("certifications", [])
+
+        role = data["role_title"]
+        data.setdefault("similar_jobs", [
+            {"title": role, "company": "Various",
+             "url": f"https://www.linkedin.com/jobs/search/?keywords={quote_plus(role)}&location=India"},
+        ])
+        return data
+    except Exception as e:
+        logger.error(f"[analyze_jd] {e}")
+        return {
+            "role_title": "Role not detected",
+            "key_skills_required": [],
+            "experience_level": "Not specified",
+            "suggestions": ["Upload your resume to the ATS Scanner for a detailed match analysis."],
+            "how_to_start": ["Use the ATS Resume Scanner to compare your resume against this role."],
+            "skills_to_learn": [],
+            "certifications": [],
+            "similar_jobs": [
+                {"title": "Software Engineer", "company": "Various",
+                 "url": f"https://www.linkedin.com/jobs/search/?keywords={quote_plus('Software Engineer')}&location=India"},
+            ],
+        }

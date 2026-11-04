@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Edit, Trash2, PlusCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
-
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.25 } },
-};
 
 export default function DraftsHub({ setActiveTab, setLoadedDraft }) {
   const [drafts, setDrafts] = useState([]);
@@ -46,11 +40,7 @@ export default function DraftsHub({ setActiveTab, setLoadedDraft }) {
   }
 
   return (
-    <motion.div
-      initial="hidden" animate="show"
-      variants={{ show: { transition: { staggerChildren: 0.07 } } }}
-      className="space-y-5"
-    >
+    <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">Your Drafts</h2>
         <p className="text-sm text-slate-400">Pick up right where you left off.</p>
@@ -58,7 +48,7 @@ export default function DraftsHub({ setActiveTab, setLoadedDraft }) {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {drafts.map(draft => (
-          <motion.div key={draft.id} variants={item}
+          <div key={draft.id}
             className="card dark:bg-surface-800 flex flex-col hover:shadow-md hover:border-primary-300 dark:hover:border-primary-700 transition-all"
           >
             <div className="flex items-center justify-center rounded-xl bg-primary-50 dark:bg-primary-900/30 h-24 mb-4">
@@ -85,9 +75,9 @@ export default function DraftsHub({ setActiveTab, setLoadedDraft }) {
                 <Trash2 size={14} />
               </button>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
-    </motion.div>
+    </div>
   );
 }

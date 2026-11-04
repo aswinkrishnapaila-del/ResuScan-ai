@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Briefcase, MapPin, DollarSign, ExternalLink, Loader2, RefreshCw, Sparkles, AlertCircle } from 'lucide-react';
-
 import { API_BASE } from '../config';
 
 export default function JobMatching() {
@@ -18,11 +16,9 @@ export default function JobMatching() {
       const response = await fetch(`${API_BASE}/job-suggestions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile_data: { scanned_skills: skills, skills: skills } })
+        body: JSON.stringify({ profile_data: { scanned_skills: skills, skills } }),
       });
-
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
-
       const data = await response.json();
       if (data.jobs && Array.isArray(data.jobs)) {
         setJobs(data.jobs);
@@ -30,8 +26,7 @@ export default function JobMatching() {
         throw new Error('Invalid response format');
       }
     } catch (err) {
-      console.error('[Job Matching] Error:', err);
-      setError('AI backend could not be reached. Showing skill-based suggestions instead.');
+      setError('Could not reach AI backend. Showing skill-based suggestions.');
       setJobs(getFallbackJobs(skills));
     } finally {
       setIsLoading(false);
@@ -45,161 +40,155 @@ export default function JobMatching() {
     const s3 = skills[2] || 'Python';
     return [
       {
-        id: 1, title: `${s1} Developer`, company: 'TechCorp Solutions', location: 'Remote, India', type: 'Full-time', salary: '8-15 LPA',
+        id: 1, title: `${s1} Developer`, company: 'TechCorp Solutions', location: 'Remote, India', type: 'Full-time', salary: '8–15 LPA',
         tags: skills.slice(0, 3).length ? skills.slice(0, 3) : [s1, s2, s3],
         linkedinUrl: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(s1 + ' Developer')}&location=India`,
-        naukriUrl: `https://www.naukri.com/${s1.toLowerCase().replace(/[^a-z0-9]/g, '-')}-developer-jobs`
+        naukriUrl: `https://www.naukri.com/${s1.toLowerCase().replace(/[^a-z0-9]/g, '-')}-developer-jobs`,
       },
       {
-        id: 2, title: 'Full Stack Engineer', company: 'Innovation Labs', location: 'Bangalore, India', type: 'Full-time', salary: '12-22 LPA',
+        id: 2, title: 'Full Stack Engineer', company: 'Innovation Labs', location: 'Bangalore, India', type: 'Full-time', salary: '12–22 LPA',
         tags: [s2, s3, 'Node.js'],
         linkedinUrl: 'https://www.linkedin.com/jobs/search/?keywords=Full+Stack+Engineer&location=India',
-        naukriUrl: 'https://www.naukri.com/full-stack-developer-jobs'
+        naukriUrl: 'https://www.naukri.com/full-stack-developer-jobs',
       },
       {
-        id: 3, title: 'Software Engineer', company: 'Various', location: 'Hybrid, India', type: 'Full-time', salary: '6-12 LPA',
+        id: 3, title: 'Software Engineer', company: 'Various Tech', location: 'Hybrid, India', type: 'Full-time', salary: '6–12 LPA',
         tags: skills.slice(0, 3).length ? skills.slice(0, 3) : ['Git', 'JavaScript', 'Problem Solving'],
         linkedinUrl: 'https://www.linkedin.com/jobs/search/?keywords=Software+Engineer&location=India',
-        naukriUrl: 'https://www.naukri.com/software-engineer-jobs'
+        naukriUrl: 'https://www.naukri.com/software-engineer-jobs',
       },
     ];
   };
 
   useEffect(() => {
-    // Read skills from scanned resume in localStorage
-    const stored = localStorage.getItem('scanned_resume_skills');
-    const skills = stored ? JSON.parse(stored) : [];
+    let skills = [];
+    try {
+      const stored = localStorage.getItem('scanned_resume_skills');
+      if (stored) skills = JSON.parse(stored);
+    } catch {}
     setScannedSkills(skills);
     fetchJobs(skills);
   }, []);
 
   const handleRefresh = () => {
-    const stored = localStorage.getItem('scanned_resume_skills');
-    const skills = stored ? JSON.parse(stored) : scannedSkills;
+    let skills = scannedSkills;
+    try {
+      const stored = localStorage.getItem('scanned_resume_skills');
+      if (stored) skills = JSON.parse(stored);
+    } catch {}
     fetchJobs(skills);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
-      style={{ paddingBottom: '3rem' }}
-    >
-      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Sparkles size={28} color="var(--primary)" />
-            AI Job Matching
+    <div className="space-y-6 pb-12">
+      {/* Header */}
+      <div className="flex justify-between items-start gap-4 flex-wrap">
+        <div className="flex-1 min-w-0">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-white mb-1">
+            <Sparkles size={22} className="text-indigo-500" /> AI Job Matching
           </h1>
-          <p style={{ color: 'var(--text-muted)', marginBottom: 6 }}>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
             Job opportunities matched from your scanned resume. Click Apply to view live listings.
           </p>
           {scannedSkills.length > 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Matching based on:</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-400">Matching based on:</span>
               {scannedSkills.slice(0, 8).map(s => (
-                <span key={s} style={{ padding: '2px 10px', background: 'var(--secondary)', color: 'var(--primary)', borderRadius: 20, fontSize: '0.75rem', fontWeight: 500 }}>{s}</span>
+                <span key={s} className="badge badge-primary text-[11px]">{s}</span>
               ))}
-              {scannedSkills.length > 8 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>+{scannedSkills.length - 8} more</span>}
+              {scannedSkills.length > 8 && (
+                <span className="text-xs text-slate-400">+{scannedSkills.length - 8} more</span>
+              )}
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(245,158,11,0.08)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.2)', marginTop: 4 }}>
-              <AlertCircle size={14} color="var(--warning)" />
-              <p style={{ fontSize: '0.82rem', color: 'var(--warning)', margin: 0 }}>
-                💡 Tip: Go to <strong>Resumes</strong> tab and scan your resume first to get personalized job matches!
+            <div className="flex items-center gap-2 rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 px-3 py-2 w-fit">
+              <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Scan your resume in the <strong>Resumes</strong> tab first for personalized matches.
               </p>
             </div>
           )}
         </div>
         <button
-          className="btn btn-outline"
+          className="btn btn-outline gap-2 flex-shrink-0"
           onClick={handleRefresh}
           disabled={isLoading}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', flexShrink: 0 }}
         >
-          {isLoading ? <Loader2 size={18} className="spin" /> : <RefreshCw size={18} />}
-          {isLoading ? 'Finding Jobs...' : 'Refresh'}
+          {isLoading ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} />}
+          {isLoading ? 'Finding…' : 'Refresh'}
         </button>
       </div>
 
+      {/* Error banner */}
       {error && (
-        <div style={{ padding: '1rem 1.25rem', background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)', borderRadius: 10, marginBottom: '1.5rem', fontSize: '0.875rem', color: 'var(--danger)' }}>
-          ⚠️ {error}
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-3 text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
+          <AlertCircle size={15} className="flex-shrink-0" /> {error}
         </div>
       )}
 
+      {/* Loading state */}
       {isLoading && !hasLoaded ? (
-        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-          <Loader2 size={40} className="spin" style={{ marginBottom: '1rem' }} />
-          <p>AI is finding the best jobs for you based on your resume skills...</p>
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
+          <Loader2 size={36} className="spin text-indigo-500" />
+          <p className="text-sm">AI is finding the best jobs for your skills…</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="space-y-3">
           {jobs.map(job => (
             <div
               key={job.id}
-              className="card"
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease', border: '1px solid var(--border-color)', gap: '1rem' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(6px)'; e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(59,40,204,0.12)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.boxShadow = ''; }}
+              className="card dark:bg-slate-800 flex items-center gap-4 p-4 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md transition-all"
             >
-              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flex: 1 }}>
-                <div style={{ width: 52, height: 52, backgroundColor: 'var(--secondary)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}>
-                  <Briefcase size={24} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: '1.05rem', marginBottom: 4 }}>{job.title}</h3>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: 8, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{job.company}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} /> {job.location} • {job.type}</span>
-                    {job.salary && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><DollarSign size={13} /> {job.salary}</span>}
-                  </p>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {(job.tags || []).map((tag, idx) => (
-                      <span key={idx} className="badge" style={{ backgroundColor: 'var(--secondary)', color: 'var(--primary)', fontSize: '0.72rem' }}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+              {/* Logo placeholder */}
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-900/40">
+                <Briefcase size={22} className="text-indigo-600 dark:text-indigo-400" />
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-slate-900 dark:text-white text-base">{job.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-3 flex-wrap mt-0.5">
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{job.company}</span>
+                  <span className="flex items-center gap-1"><MapPin size={12} /> {job.location} · {job.type}</span>
+                  {job.salary && <span className="flex items-center gap-1"><DollarSign size={12} /> {job.salary}</span>}
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {(job.tags || []).map((tag, idx) => (
+                    <span key={idx} className="badge badge-primary text-[11px]">{tag}</span>
+                  ))}
                 </div>
               </div>
 
-              {/* Apply Buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+              {/* Apply buttons */}
+              <div className="flex flex-col gap-2 flex-shrink-0">
                 <a
-                  href={job.linkedinUrl || job.searchUrl || `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title)}&location=India`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-primary"
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: '0.82rem', textDecoration: 'none' }}
+                  href={job.linkedinUrl || `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title)}&location=India`}
+                  target="_blank" rel="noreferrer"
+                  className="btn btn-primary text-xs px-3 py-1.5 gap-1 no-underline"
                   onClick={e => e.stopPropagation()}
                 >
-                  LinkedIn <ExternalLink size={13} />
+                  LinkedIn <ExternalLink size={11} />
                 </a>
                 <a
                   href={job.naukriUrl || `https://www.naukri.com/${job.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-jobs`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-outline"
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: '0.82rem', textDecoration: 'none' }}
+                  target="_blank" rel="noreferrer"
+                  className="btn btn-outline text-xs px-3 py-1.5 gap-1 no-underline"
                   onClick={e => e.stopPropagation()}
                 >
-                  Naukri <ExternalLink size={13} />
+                  Naukri <ExternalLink size={11} />
                 </a>
               </div>
             </div>
           ))}
 
           {jobs.length === 0 && !isLoading && (
-            <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-              <Briefcase size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-              <p>No jobs found. Try scanning a resume first, then refresh.</p>
+            <div className="card dark:bg-slate-800 text-center py-12">
+              <Briefcase size={40} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+              <p className="text-slate-500 dark:text-slate-400">No jobs found. Scan a resume first, then refresh.</p>
             </div>
           )}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

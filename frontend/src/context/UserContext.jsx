@@ -6,26 +6,36 @@ const UserContext = createContext();
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(() => {
+    try {
+      const local = localStorage.getItem('resuscan_profile');
+      if (local) return JSON.parse(local);
+    } catch {}
+    return null;
+  });
+  const [loading, setLoading] = useState(false);
 
   const fetchProfile = async () => {
+    // Non-blocking fetch with 1.2s timeout so it never hangs or freezes the page
     try {
-      const { data, error } = await supabase.from('profiles').select('*').limit(1).single();
-      if (data) {
-        setProfile(data);
-        localStorage.setItem('resuscan_profile', JSON.stringify(data));
-      } else {
-        // Fallback to local storage if supabase returns nothing
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Supabase request timeout')), 1200)
+      );
+      const queryPromise = supabase.from('profiles').select('*').limit(1).maybeSingle();
+      const res = await Promise.race([queryPromise, timeoutPromise]);
+      
+      if (res && res.data) {
+        setProfile(res.data);
+        try {
+          localStorage.setItem('resuscan_profile', JSON.stringify(res.data));
+        } catch {}
+      }
+    } catch {
+      // Gracefully fall back to local cached profile without throwing
+      try {
         const local = localStorage.getItem('resuscan_profile');
         if (local) setProfile(JSON.parse(local));
-        else setProfile(null);
-      }
-    } catch (err) {
-      console.log("Supabase fetch failed, falling back to local storage:", err.message);
-      const local = localStorage.getItem('resuscan_profile');
-      if (local) setProfile(JSON.parse(local));
-      else setProfile(null);
+      } catch {}
     } finally {
       setLoading(false);
     }

@@ -1,24 +1,51 @@
+# Environment Variables & Secrets (CRITICAL: NEVER COMMIT REAL SECRETS)
+.env
+.env.*
+*.env
+*.env.local
+backend/.env
+frontend/.env
+frontend/.env.*
+!.env.example
+!*.env.example
+
 # Python
-backend/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
 backend/__pycache__/
 backend/**/__pycache__/
-backend/*.pyc
+backend/venv/
+venv/
+.venv/
 backend/services/python.exe
 
-# Secrets — set these as Railway environment variables instead
-backend/.env
-
-# Dev-only scripts (not needed in production)
+# Dev-only scripts and tests
 backend/create_sample.py
 backend/test_pdf.py
+backend/test_scan.py
+backend/test_api.py
+backend/test_scan_api.py
 frontend/*.py
 
-# Frontend build artifacts
-frontend/node_modules/
-frontend/dist/
-frontend/.env.local
+# Screenshots and scratch images
+*.png
+screenshot_*.png
+tab_*.png
 
-# System
+# Node & Frontend build artifacts
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+dist-ssr/
+*.local
+
+# System & IDE files
 .DS_Store
 Thumbs.db
 *.log
+.vscode/
+.idea/
+.freebuff/
