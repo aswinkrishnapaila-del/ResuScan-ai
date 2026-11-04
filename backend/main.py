@@ -1,3 +1,12 @@
+import sys
+import os
+from pathlib import Path
+
+# Ensure backend directory is in sys.path regardless of execution root
+_BACKEND_DIR = Path(__file__).resolve().parent
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
+
 import time
 import uuid
 from collections import defaultdict

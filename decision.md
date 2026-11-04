@@ -103,3 +103,12 @@
 ## 16. Comprehensive AI Endpoint Rate Limiting
 - **Decision:** Added `/interview-questions`, `/mock-test`, and `/job-suggestions` to the strict `AI_MAX_REQUESTS_PER_MINUTE = 15` rule in `backend/main.py`.
 - **Why:** Extends automated sliding-window rate limiting and quota protection to all AI-driven endpoints, shielding the Gemini and Groq API keys against token exhaustion from rapid clicks or loops.
+
+---
+
+## 17. Backend Cloud Deployment Fixes & Universal Root Entrypoints
+- **Decision:**
+  - Fixed `ModuleNotFoundError: No module named 'routers'` by dynamically injecting the backend directory into `sys.path` in `backend/main.py` and creating a root `main.py` proxy.
+  - Provided universal root deployment definitions: root `Dockerfile`, `Procfile`, `render.yaml`, `railway.json`, `runtime.txt`, and `requirements.txt`.
+  - Upgraded frontend `config.js` to dynamically detect deployment environments and support custom `resuscan_api_base` overrides without requiring frontend rebuilds.
+- **Why:** Most cloud hosting providers (Render, Railway, Heroku, Koyeb, Docker) build from the repository root rather than subdirectories. Without root entrypoints and `sys.path` injection, deployed containers crash immediately on launch with module import errors. These additions make the backend universally deployable to any cloud platform with zero manual configuration.
